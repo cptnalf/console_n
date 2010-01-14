@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<console title="" change_refresh="10" refresh="1000" editor="metapad.exe" editor_params="/e %f">
+
+   <font>
+		<shadow distance="1" r="0" g="128" b="0" />
+      <size>8</size>
+      <bold>false</bold>
+      <italic>false</italic>
+      <name>FixedMedium7x14</name>
+	  <colors>
+	     <color_00 r="0" g="0" b="0" />
+	     <color_01 r="0" g="0" b="128" />
+	     <color_02 r="0" g="128" b="0" />
+	     <color_03 r="0" g="128" b="128" />
+	     <color_04 r="128" g="0" b="0" />
+	     <color_05 r="128" g="0" b="128" />
+	     <color_06 r="128" g="128" b="0" />
+	     <color_07 r="192" g="192" b="192" />
+	     <color_08 r="128" g="128" b="128" />
+	     <color_09 r="0" g="0" b="255" />
+	     <color_10 r="0" g="255" b="0" />
+	     <color_11 r="0" g="255" b="255" />
+	     <color_12 r="255" g="0" b="0" />
+	     <color_13 r="255" g="0" b="255" />
+	     <color_14 r="255" g="255" b="0" />
+	     <color_15 r="255" g="255" b="255" />
+	  </colors>
+   </font>
+
+	<position>
+		<x>-1</x>
+		<y>100</y>
+		<docked>none</docked>
+		<snap_distance>-1</snap_distance>
+		<z_order>regular</z_order>
+	</position>
+
+	<appearance>
+		<hide_console>true</hide_console>
+		<hide_console_timeout>5000</hide_console_timeout>
+		<start_minimized>true</start_minimized>
+
+		<border>regular</border>
+		<inside_border>15</inside_border>
+		<taskbar_button>regular</taskbar_button>
+
+		<scrollbar>
+			<style>regular</style>
+			<color r="192" g="192" b="192" />
+			<width>10</width>
+			<button_height>10</button_height>
+			<thumb_height>120</thumb_height>
+		</scrollbar>
+
+		<size rows="43" columns="80" buffer_rows="1000" />
+		<transparency alpha="200" inactive_alpha="150">fake</transparency>
+		<background>
+			<color  r="0" g="0" b="0" />
+			<tint r="0" g="0" b="0" opacity="50" />
+			<image  style="center" relative="true" extend="false">F:\Smece\1.bmp</image>
+		</background>
+
+		<cursor>.
+			<color  r="255" g="255" b="255" />
+			<style>noblink  line</style>
+		</cursor>
+	</appearance>
+
+	<behaviour>
+		<mouse_drag>true</mouse_drag>
+		<copy_on_select>false</copy_on_select>
+		<inverse_shift>true</inverse_shift>
+		<disable_menu>false</disable_menu>
+	</behaviour>
+
+</console>

@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<console title="small_console" change_refresh="5" refresh="100">
+
+   <font>
+      <size>8</size>
+      <bold>false</bold>
+      <italic>false</italic>
+      <name>Lucida Console</name>
+   </font>
+
+   <position>
+      <x>0</x>
+      <y>0</y>
+      <docked>bottom left</docked>
+      <snap_distance>10</snap_distance>
+      <z_order>regular</z_order>
+   </position>
+
+   <appearance>
+
+      <hide_console>true</hide_console>
+      <border>none</border>
+      <inside_border>2</inside_border>
+      <taskbar_button>tray</taskbar_button>
+
+      <size rows="10" columns="80" buffer_rows="500" />
+      <transparency alpha="160" inactive_alpha="50">alpha</transparency>
+      <background>
+         <color r="0" g="0" b="0" />
+      </background>
+
+      <cursor>
+         <color r="255" g="255" b="255" />
+         <style>fading block</style>
+      </cursor>
+
+   </appearance>
+
+   <behaviour>
+      <mouse_drag>true</mouse_drag>
+   </behaviour>
+
+</console>

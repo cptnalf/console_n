@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<console change_refresh="10" refresh="0" editor="metapad.exe">
+	<font>
+		<size>8</size>
+		<bold>false</bold>
+		<italic>false</italic>
+		<name>Lucida Console</name>
+
+		<colors>
+			<color_00 r="0" g="0" b="0" />
+			<color_01 r="0" g="0" b="128" />
+			<color_02 r="0" g="128" b="0" />
+			<color_03 r="0" g="128" b="128" />
+			<color_04 r="128" g="0" b="0" />
+			<color_05 r="128" g="0" b="128" />
+			<color_06 r="128" g="128" b="0" />
+			<color_07 r="192" g="192" b="192" />
+			<color_08 r="128" g="128" b="128" />
+			<color_09 r="0" g="0" b="255" />
+			<color_10 r="0" g="255" b="0" />
+			<color_11 r="0" g="255" b="255" />
+			<color_12 r="255" g="0" b="0" />
+			<color_13 r="255" g="0" b="255" />
+			<color_14 r="255" g="255" b="0" />
+			<color_15 r="255" g="255" b="255" />
+		</colors>
+	</font>
+
+	<position>
+		<x>100</x>
+		<y>100</y>
+		<docked>none</docked>
+		<snap_distance>-1</snap_distance>
+		<z_order>regular</z_order>
+	</position>
+
+	<appearance>
+
+		<hide_console>true</hide_console>
+		<border>none</border>
+		<inside_border>0</inside_border>
+		<taskbar_button>normal</taskbar_button>
+
+		<size rows="50" columns="80" buffer_rows="1000" />
+		<transparency alpha="255" inactive_alpha="100">alpha</transparency>
+
+		<background>
+			<color r="0" g="0" b="0" />
+			<tint r="0" g="0" b="0" opacity="80" />
+			<!--         <image relative="true" resize="true">back.bmp</image> -->
+		</background>
+
+		<cursor>
+			<color r="255" g="255" b="255" />
+			<style>fading block</style>
+		</cursor>
+
+	</appearance>
+	<behaviour>
+		<mouse_drag>false</mouse_drag>
+		<reload_new_config>yes</reload_new_config>
+	</behaviour>
+
+</console>

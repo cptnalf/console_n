@@ -1,0 +1,98 @@
+Bugs
+----
+*** Done *** - 'always on bottom' doesn't work
+*** Fixed *** - resizing after RAR and the console is hidden doesn't work properly
+*** Fixed *** - after select/copy, paste (to, e.g. Notepad) doesn't work for some people
+*** Fixed *** - '-t' option is not preserved when reloading settings
+- problems with fake transparency and some programs (e.g. GnuWin32 less.exe)
+
+
+v1.0
+----
+*** Done *** - fake transparency
+
+v1.10
+-----
+
+v1.20
+-----
+*** Done *** - configurable console window title
+*** Done *** - font color as an option
+*** Done *** - tray icon
+*** Done *** - scrollable text buffer
+*** Done *** - paste in the main window
+*** Done *** - copy in the main window
+*** Done *** - current command in the titlebar
+
+
+v1.4x
+-----
+*** Done *** - add space between text and window border
+
+*** Done *** - font color mapping
+*** Done *** - customizable icon
+
+
+v1.5
+----
+*** Done *** - proper background handling for multiple monitors
+*** Done *** - remove trailing " -" on title=""
+
+*** Done *** - add cursors: hollow rectangle, simple underline
+
+- stop a text from scrolling if scrollbar is not at the end position (?)
+
+- start minimized option
+
+- desktop element option (?)
+
+
+
+Future/maybe
+------------
+- handle stderr?
+- handle console full-screen properly
+
+- tabs
+- *nix console style select
+
+- options in the menu
+- saving new options on exit
+
+- stop cursor from blinking while typing (option)
+
+- resizing
+
+
+
+
+Background test
+===============
+
++--------+------------+----------+----+----+
+| style  |  relative  |  extend  | SM | MM |
++--------+------------+----------+----+----+
+| resize |    false   |   false  |    | ok |
++--------+------------+----------+----+----+
+| resize |    false   |   true   |    | ok |
++--------+------------+----------+----+----+
+| resize |    true    |   false  |    | ok |
++--------+------------+----------+----+----+
+| resize |    true    |   true   |    | ok |
++--------+------------+----------+----+----+
+| center |    false   |   false  |    | ok |
++--------+------------+----------+----+----+
+| center |    false   |   true   |    | ok |
++--------+------------+----------+----+----+
+| center |    true    |   false  |    | ok |
++--------+------------+----------+----+----+
+| center |    true    |   true   |    | ok |
++--------+------------+----------+----+----+
+|  tile  |    false   |   false  |    | ok |
++--------+------------+----------+----+----+
+|  tile  |    false   |   true   |    | ok |
++--------+------------+----------+----+----+
+|  tile  |    true    |   false  |    | no |
++--------+------------+----------+----+----+
+|  tile  |    true    |   true   |    | no |
++--------+------------+----------+----+----+

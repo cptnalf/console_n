@@ -1,0 +1,533 @@
+v1.5
+====
+
+Build 350
+---------
+
+- if Console title is set to "", " - " is no longer displayed at the beginning
+  of the window title
+
+- added a few more cursor types: "noblink block", "pulse block", "rect",
+  "noblink rect", "noblink line"
+
+- copied text now has \r\n at the end of each row
+
+- added <start_minimized> tag to <appearance> tag; if set to true, Console
+  will start minimized
+
+
+Build 349
+---------
+
+- added <hide_console_timeout> tag to the <appearance> tag; it contorls how
+  long the Win console window will be visible (but minimized) during shell
+  startup; some shells (like 4NT) need Win console window visible during
+  initialization
+
+- window position is not changed when reloading settings
+
+- you can set initial X or Y position to -1 to let the system place the
+  Console window at startup
+
+
+Build 348
+---------
+
+- improved startup time for tinted backgrounds
+
+
+Build 347
+---------
+
+- a fix for failed transparency when using fake transparency; only the color
+  you set as the background color will be treated as the background color and
+  painted transparently (before, Console was trying to guess the current
+  background color, but that didn't work reliably with some programs like vim
+  that seem to change background color while painting their screen)
+
+- tweaked background creation a bit
+
+
+Build 346
+---------
+
+- removed debug output from Release build (forgot to do it sometime in the
+  past)
+
+- removed "resize" attribute from <image> tag under <background>; added
+  "style" and "extend" atributes
+
+- fixed fake transparency and relative backgrounds for multiple monitors (I
+  hope :-)
+
+
+v1.42
+=====
+
+Build 345
+---------
+
+- added <disable_menu> tag to <behavior> tag; it disables the popup menu
+  for main window and tray icon, system menu is still available
+
+- improved text selection (fixed some small bugs as well)
+
+- back to old window titles; Windows console window has "Console Command
+  Window" title again; this simplifies things and fixes some bugs
+
+
+Build 344
+---------
+
+- added 'editor_params' attribute to <console> tag; it can be used to pass
+  additional parameters to a text editor used to edit configuration and view
+  the Readme file
+
+- both Console window and the hidden Windows console window have the same
+  titlebar text now, so Console titlebar text just copies whatever Windows
+  console titlebar shows (i.e., currently running command), except when
+  Windows console titlebar text is completely changed (in that case Win
+  console titlebar text is concatenated to the default Console title)
+
+- improved files drag'n'drop handling; if several files are dropped at once,
+  they will be sent to Console, separated by spaces; also, filenames that
+  contain spaces will be enclosed in double quotes
+
+
+Build 343
+---------
+
+- fixed a bug with non-animated cursor painting
+
+- configuration files submenu is now populated at startup, so the list can be
+  used by external programs; it is still refreshed when opening the popup menu
+
+- fixed a small bug with custom icons (if the icon file is not found, the
+  default icons are loaded)
+
+- fixed a background image bug: if a background image is not found, Console
+  will use solid background
+
+- added some comments to the sample console.xml file; thanks to Rob Davenport
+  for the initial comments
+
+
+Build 342
+---------
+
+- added <reload_new_config> under <behavior> tag and '-r' command-line option
+  to control configuration auto-loading (when a new configuration file is
+  selected from the popup menu); supported options: 'yes', 'no' and 'prompt';
+  default is 'prompt'
+
+Build 341
+---------
+
+- added support for behavior/behaviour tag spelling (no, I will not add
+  alternate spellings for 'color' tags and attributes :-)
+
+- a user is prompted for configuration reload when changing a configuration
+  file (thanks to Rob Davenport for the patch)
+
+- fixed a small handle leak introduced in b340 (in config file enumeration)
+
+- fixed a memory leak when variable-width fonts were used
+
+- tweaked cursor drawing a bit (this fixed a bug with fading block cursor and
+  variable-width fonts)
+
+
+Build 340
+---------
+
+- Console windows with hidden/tray taskbar option are no longer shown in the
+  ALT-TAB menu (a bug introduced in b339)
+
+- added several things to the right-click menu: copy, paste, 'always on top'
+  toggle and configuration file selection submenu
+
+- fixed keyboard layout switching
+
+- cleaned up and reorganized the code a bit
+
+- added 'Readme' option to the menus; it opens the Readme.txt file
+
+
+Build 339
+---------
+
+- added flat scrollbar support (thanks to Adam Hodson for the code)
+
+- extended scrollbar supprot, added a new tag <scrollbar> for setting several
+  scrollbar attributes
+
+- fixed a problem with custom icons (no custom icon was shown in the ALT-TAB
+  menu)
+
+- Console window now looks like a regular window even when <taskbar_button> is
+  set to 'hide' or 'tray'; clicking on the minimize button when Console shows
+  tray icon minimizes the Console window to tray (single click on the tray
+  icon to restore, double-clicking on the tray icon still works the same);
+  Thanks to Daniel Cheng for the code
+
+
+Build 338
+---------
+
+- added FreeImage library for image loading/manipulation stuff
+
+- added 'Edit configuration file' to the right-click menu. It will open a text
+  editor of your choice (notepad by default)
+
+- added 'editor' attribute to <console> flag: used to specify text editor for
+  the configuration file (default: notepad.exe)
+
+- fixed some GDI, handle and memory leaks
+
+- fixed a small clipboard bug (text copied from a console could not be pasted
+  into the same console)
+
+
+Build 337
+---------
+
+- new <behaviour> tag; moved <mouse_drag> and <copy_on_select> there, added
+  <inverse_shift> tag that inverses SHIFT behaviour for selecting when mouse
+  drag is enabled (thanks to Dean Scarff for contributing code)
+
+- Console window title set by -t command line option is no longer cleared
+  after settings reload
+
+
+Build 336
+---------
+
+- Console will now use cmd.exe as shell if no shell was specified in the
+  config file and COMSPEC environment variable was not found
+
+- added support for custom program icons (<icon> tag under <appearance> tag)
+
+- console font colors can now be mapped to custom values
+
+- fixed "dead characters" handling (hopefully)
+
+- added support for non-truecolor bitmap backgrounds
+
+
+Build 335
+---------
+
+- finally fixed selection problems (they appeared when inside border size was
+  greater than character width/height)
+
+
+Build 334
+---------
+
+- added a command line switch for console title (-t)
+
+- files and directories can now be drag-n-dropped to Console
+
+- Console window is sent to foreground at start now
+
+Build 333
+---------
+
+- fixed a small selection drawing bug casued by adding inside border
+
+Build 332
+---------
+
+- Console now supports Unicode characters
+
+- added the <inside_border> tag to <appearance> tag for setting client area
+  border (text is drawn a bit further from the window edge for a more
+  'relaxed' look)
+
+Build 331
+---------
+
+- fixed a text copy bug some people have reported
+
+- added a .reg file for activating file and directory name completion for
+  cmd.exe (thanks to Rob 'insanitee' for the idea)
+
+Build 330
+---------
+
+- text can now be selected by left-click and drag if Console window is not
+  mouse draggable
+
+- text can now be pasted by clicking the middle mouse button
+
+- added copy_on_select tag for X Windows style select/copy
+
+Build 329
+---------
+
+- fixed a small text selection bug (multiple selection rectangles could be
+  drawn)
+
+Build 328
+---------
+
+- mouse whell messages are now redirected to console window (thanks to
+  Francois Leblanc for submitting a patch)
+
+Build 327
+---------
+
+- mouse wheel scrolling looks better now
+
+Build 326
+---------
+
+- further reduced CPU usage for window repainting
+
+- proportional fonts work again (they got broken during optimizations)
+
+Build 325
+---------
+
+- reduced CPU usage for window repainting
+
+
+v1.41
+=====
+
+Build 324
+---------
+
+- improved copy code and fixed a little bug with 'jumpy' window when copying
+  selection; note that copy behaviour is slightly different now: selection is
+  copied when you release the left mouse button after clicking inside the
+  selection
+
+Build 323
+---------
+
+- minimize box is back! It got lost... Note that Console window will have
+  minimize box only if its border is set to 'regular' and taskbar button to
+  'normal'
+
+- setting Console window title is now done only when a title text changes;
+  this will, hopefully, fix titlebar/taskbar flicker problem reported
+
+Build 322
+---------
+
+- added multi-monitor support (without breaking WinNT compatibility, I hope
+  :); many thanks to Daniel Soto (danisoto@users.sourceforge.net) for
+  providing the code
+
+Build 321
+---------
+
+- fixed a crash after reloading settings when cursor style was changed to
+  'none' from something else
+
+Build 320
+---------
+
+- fixed window repainting problem with a non-relative background image
+
+- fixed a painting problem with 'console' style cursor
+
+
+v1.40
+=====
+
+Build 319
+---------
+
+- fixed a small reload bug (window repainting)
+
+Build 318
+---------
+
+- improved window title handling
+
+Build 317
+---------
+
+- text selection got a bit screwed up due to painting optimizations, fixed
+
+Build 316
+---------
+
+- more painting improvements
+
+Build 315
+---------
+
+- improved window painting (CPU usage reduced)
+
+Build 314
+---------
+
+- improved cursor drawing (now the previous position is erased)
+
+- added change_refresh attribute to <console> tag; it controls how long window
+  repainting is delayed after a change is detected in the real console
+
+Build 313
+---------
+
+- speed improvements
+
+- background painting bugfixes
+
+
+v1.32
+=====
+
+Build 312
+---------
+
+- changed paste code a bit
+
+- better text selection redrawing (no more flicker)
+
+Build 311
+---------
+
+- improved screen refreshing (problematic ReadConsoleOutput function :-)
+
+Build 310
+---------
+
+- fixed a console resizing bug (setting different number of columns)
+
+
+v1.31
+=====
+
+Build 309
+---------
+
+- a small alpha transparency painting bugfix
+
+v1.30
+=====
+
+Build 308
+---------
+
+- improved window painting a bit
+
+- added background tinting for background images and fake transparency
+
+Build 307
+---------
+
+- added 'shell' attribute to 'console' node to override COMSPEC variable
+
+Build 306
+---------
+
+- background bug wasn't completely fixed in b305 :-)
+
+Build 305
+---------
+
+- fixed Console crash if cursor style was set to 'none'
+
+- real console can have any background color; there was a problem with non-
+  black console background and Console background image (please read
+  instructions for background 'color' tag regarding background images)
+
+Build 304
+---------
+
+- added 'refresh' attribute to 'console' tag; it controls how often the
+  console window redraws if there are no changes detected in the
+  console; this timer is neccessary to ensure proper operation of some
+  DOS programs (like RAR); this refresh timer can be switched off to
+  reduce CPU usage, but some DOS programs will not be displayed
+  correctly (if at all :-)
+
+Build 303
+---------
+
+- a small window sizing fix (with regular border)
+
+- window scrolling with background looks as it should now
+
+- changed 'stretch' attribute of 'image' node to 'resize'
+
+
+v1.20
+=====
+
+Build 302
+---------
+
+- v1.20 release
+
+Build 301
+---------
+
+- fixed a little bug with multiple Console instances
+
+- current command is now displayed in the Console main window (if the titlebar
+  is visible, of course :-)
+
+- problems with some combinations of window border and taskbar button when
+  reloading settings have been solved
+
+Build 300
+---------
+
+- Console border would get screwed up when reloading in some cases (e.g.
+  changing the border from thin to regular); this has been fixed now
+
+Build 299
+---------
+
+- added copy: shift+left click and drag to select, left click inside the
+  selection to copy, left click outside of the selection to clear it
+
+Build 298
+---------
+
+- changed buffer refreshing code for large screen buffers a bit; this should
+  fix a crash (or at least make it less probable :-); the crash would manifest
+  itself when running a small window (like 10 rows) with a rather large
+  screenbuffer (200 rows or more), and running a DOS program (QEdit or RAR)
+  that resizes the real console
+
+Build 297
+---------
+
+- real console window is now shown/hidden properly when reloading settings
+
+- when showing the real console window, it's brought to foreground now
+
+- improved paste (there were problems with pasting into some programs like
+  ncftp)
+
+Build 296
+---------
+- added paste (shift+right click)
+
+Build 295
+---------
+- added a scrollable text buffer as an option (use buffer_rows attribute in
+  size tag)
+
+Build 294
+---------
+- console resizing bug fixed (manifested when running some DOS apps, like RAR)
+
+- added console title as an option
+
+- added font color as an option
+
+- changed font options' layout a bit
+
+- taskbar_hide tag changed to taskbar_button tag
+
+- you can put Console icon to sys tray now if you left-click on it will bring
+  the Console window to the foreground, right-clicking will bring up the popup
+  menu and left double click will hide/show the Console window
+

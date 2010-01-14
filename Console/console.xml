@@ -1,0 +1,145 @@
+<?xml version="1.0"?>
+
+<!-- A sample Console configuration file                                   -->
+<!-- http://sourceforge.com/projects/console                               -->
+<!-- (c) 2001-2004, bozho@kset.org                                         -->
+<!--                                                                       -->
+<!-- Thanks to Rob Davenport for making the initial comments for this file -->
+
+<!-- This sample console.xml file has just basic comments -->
+<!-- For better explanations, see the ReadMe.txt file.    -->
+
+<console title="Console 1.42" change_refresh="10" refresh="100" editor="notepad.exe">
+<!-- Possible console tag attributes: -->
+<!-- title: title of console window -->
+<!-- change_refresh: frequency of refresh when changes occur -->
+<!-- refresh: frequency of window refreshes when no changes occur -->
+<!-- editor: executable path/name of editor to edit configuration settings -->
+<!-- editor_params: additional parameters to be passed to the editor; %f   -->
+<!--                will be replaced with the configuration file name      -->
+
+<!-- TODO: error messages if xml value not understood -->
+
+   <font>
+      <size>10</size>
+      <bold>false</bold>
+      <italic>false</italic>
+      <name>Lucida Console</name>
+      <!-- These values define Windows console font colors. You can tweak  -->
+      <!-- them here for improved visibility (or any other purpose :-)     -->
+      <colors>
+         <color_00 r="0" g="0" b="0" />            <!-- Black           -->
+         <color_01 r="0" g="0" b="128" />          <!-- Blue            -->
+         <color_02 r="0" g="128" b="0" />          <!-- Green           -->
+         <color_03 r="0" g="128" b="128" />        <!-- Cyan            -->
+         <color_04 r="128" g="0" b="0" />          <!-- Red             -->
+         <color_05 r="128" g="0" b="128" />        <!-- Magenta         -->
+         <color_06 r="128" g="128" b="0" />        <!-- Yellow          -->
+         <color_07 r="192" g="192" b="192" />      <!-- White           -->
+         <color_08 r="128" g="128" b="128" />      <!-- Gray (Br.Black) -->
+         <color_09 r="0" g="0" b="255" />          <!-- Br.Blue         -->
+         <color_10 r="0" g="255" b="0" />          <!-- Br.Green        -->
+         <color_11 r="0" g="255" b="255" />        <!-- Br.Cyan         -->
+         <color_12 r="255" g="0" b="0" />          <!-- Br.Red          -->
+         <color_13 r="255" g="0" b="255" />        <!-- Br.Magenta      -->
+         <color_14 r="255" g="255" b="0" />        <!-- Br. Yellow      -->
+         <color_15 r="255" g="255" b="255" />      <!-- Br. White       -->
+      </colors>
+
+   </font>
+
+   <position>
+      <x>100</x>
+      <y>100</y>
+      <docked>none</docked>             <!-- bottom left, bottom right, -->
+                                        <!-- top left, top              -->
+
+      <snap_distance>-1</snap_distance> <!-- in pixels, -1 to disable   -->
+      <z_order>regular</z_order>        <!-- regular, on top, on bottom -->
+   </position>
+
+   <appearance>
+
+      <hide_console>true</hide_console>
+      <border>regular</border>                <!-- none, regular, thin     -->
+      <inside_border>2</inside_border>        <!-- pixel width of border   -->
+                                              <!-- between text and window -->
+                                              <!-- edge - the gutter       -->
+
+      <taskbar_button>normal</taskbar_button> <!-- normal, hide, tray      -->
+
+      <scrollbar>
+        <style>regular</style>                <!-- flat, regular, encarta  -->
+        <color r="0" g="0" b="0" />
+        <width>16</width>
+        <button_height>16</button_height>
+        <thumb_height>128</thumb_height>
+      </scrollbar>
+
+      <!-- icon to use for Console, including systray support -->
+      <!-- <icon>console.ico</icon>    -->
+
+      <size rows="50" columns="80" buffer_rows="500" />
+
+<!-- sample style: transparent window (grey background black text,         -->
+<!--               transparent to windows beneath)                         -->
+<!--   <transparency alpha="200" inactive_alpha="150">alpha</transparency> -->
+<!--   <background>                                                        -->
+<!--      <color r="192" g="192" b="192" />                                -->
+
+<!-- sample style: console window with background (black background        -->
+<!-- showing image beneath, bright text                                    -->
+<!--   Note: may have to play with hidden console settings and reapply     -->
+<!--         colors, and windows wallpaper.                                -->
+<!--   Hidden console settings - black background, white text (for dark    -->
+<!--   wallpaper, dark text for light paper)                               -->
+<!--   <transparency>fake</transparency>                                   -->
+<!--   <background>                                                        -->
+<!--      <color r="0" g="0" b="0" />                                      -->
+
+<!-- sample style: console window with background image (black (real       -->
+<!--               console color) text superimposed on image beneath       -->
+<!--   <transparency>none</transparency>                                   -->
+<!--   <background>                                                        -->
+<!--      <color r="0" g="0" b="0" />                                      -->
+<!--      <image relative="true" resize="true">snowtop.bmp</image>         -->
+<!--      may add: <tint r="0" g="0" b="0" opacity="80" />                 -->
+
+      <!-- alpha,inactive_alpha values: 0-255                       -->
+      <!-- transparency values: none, alpha, color key, fake        -->
+      <transparency>fake</transparency>
+
+      <background>
+         <!-- background color if no background image is used;      -->
+         <!-- color key if color key transparency used;             -->
+         <!-- set to real console backcolor if use background image -->
+         <color r="0" g="0" b="0" />
+         <!-- tint is for background images and fake transparency   -->
+         <tint r="0" g="0" b="0" opacity="50" />
+
+<!--      use an image background if not using transparency         -->
+<!--     <image relative="true" resize="true">snowtop.bmp</image>   -->
+      </background>
+
+      <cursor>
+         <color r="255" g="255" b="255" />
+         <!-- Possible styles: none, XTerm, block, bar, console,       -->
+         <!-- horizontal line, vertical line, pulse rect, fading block -->
+         <style>XTerm</style>
+      </cursor>
+
+   </appearance>
+   <behaviour>
+      <!-- if true, clicking on window will move it, not select region     -->
+      <mouse_drag>false</mouse_drag>
+      <!-- if true, will copy region to clipboard when done selecting      -->
+      <copy_on_select>false</copy_on_select>
+      <!-- for mouse drag, inverses function of shift on mouse-drag ops    -->
+      <inverse_shift>false</inverse_shift>
+      <!-- Console behavior when a new configuration file is selected      -->
+      <!-- from the popup menu; possible values: prompt, yes, no           -->
+      <reload_new_config>prompt</reload_new_config>
+      <!-- if set to true, the popup menu will be disabled                 -->
+      <disable_menu>false</disable_menu>
+   </behaviour>
+</console>

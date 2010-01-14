@@ -180,13 +180,19 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 
 	m_strConfigFile = GetFullFilename(pszConfigFile);
 
-	if (!_tcsicmp(pszReloadNewConfig, _T("yes"))) {
-		m_dwReloadNewConfigDefault = RELOAD_NEW_CONFIG_YES;
-	} else if (!_tcsicmp(pszReloadNewConfig, _T("no"))) {
-		m_dwReloadNewConfigDefault = RELOAD_NEW_CONFIG_NO;
-	} else {
-		m_dwReloadNewConfigDefault = RELOAD_NEW_CONFIG_PROMPT;
-	}
+	if (!_tcsicmp(pszReloadNewConfig, _T("yes"))) 
+		{
+			m_dwReloadNewConfigDefault = RELOAD_NEW_CONFIG_YES;
+		} 
+	else if (!_tcsicmp(pszReloadNewConfig, _T("no"))) 
+		{
+			m_dwReloadNewConfigDefault = RELOAD_NEW_CONFIG_NO;
+		} 
+	else 
+		{
+			m_dwReloadNewConfigDefault = RELOAD_NEW_CONFIG_PROMPT;
+		}
+	
 	m_dwReloadNewConfig = m_dwReloadNewConfigDefault;
 		
 	m_mouseCursorOffset.x = 0;
@@ -208,31 +214,33 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 	strExeDir += TCHAR('\\');
 
 	// if no config file is given, get console.xml from the startup directory
-	if (m_strConfigFile.length() == 0) {
-
-		m_strConfigFile = strExeDir + tstring(_T("console.xml"));
-	}
-
+	if (m_strConfigFile.length() == 0) 
+		{
+			
+			m_strConfigFile = strExeDir + tstring(_T("console.xml"));
+		}
+	
 	// get readme filename
 	m_strReadmeFile = strExeDir + tstring(_T("Readme.txt"));
-
+	
 	::ZeroMemory(&m_csbiCursor, sizeof(CONSOLE_SCREEN_BUFFER_INFO));
 	::ZeroMemory(&m_csbiConsole, sizeof(CONSOLE_SCREEN_BUFFER_INFO));
-
+	
 	SetDefaultConsoleColors();
 }
 
-Console::~Console() {
-
+Console::~Console() 
+{
+	
 	DEL_ARR(m_pScreenBuffer);
 	DEL_ARR(m_pScreenBufferNew);
-
+	
 	if (m_hSmallIcon) ::DestroyIcon(m_hSmallIcon);
 	if (m_hBigIcon) ::DestroyIcon(m_hBigIcon);
 	
 	::CloseHandle(m_hConsoleProcess);
 	::CloseHandle(m_hQuitEvent);
-
+	
 	// shutdown console process
 	::CloseHandle(m_hStdOut);
 	::CloseHandle(m_hStdOutFresh);
@@ -249,8 +257,8 @@ Console::~Console() {
 /////////////////////////////////////////////////////////////////////////////
 // creates and shows Console window
 
-BOOL Console::Create(TCHAR* pszConfigPath) {
-	
+BOOL Console::Create(TCHAR* pszConfigPath) 
+{
 	if (!GetOptions()) return FALSE;
 	
 	if (!RegisterWindowClasses()) return FALSE;
@@ -294,15 +302,21 @@ BOOL Console::Create(TCHAR* pszConfigPath) {
 	RepaintWindow();
 	::UpdateWindow(m_hWnd);
 
-	if (m_bStartMinimized) {
-		if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) {
-			m_bHideWindow = TRUE;
-		} else {
-			::ShowWindow(m_hWnd, SW_MINIMIZE);
+	if (m_bStartMinimized) 
+		{
+			if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) 
+				{
+					m_bHideWindow = TRUE;
+				} 
+			else
+				{
+					::ShowWindow(m_hWnd, SW_MINIMIZE);
+				}
+		} 
+	else 
+		{
+			::ShowWindow(m_hWnd, SW_SHOW);
 		}
-	} else {
-		::ShowWindow(m_hWnd, SW_SHOW);
-	}
 	
 	::SetForegroundWindow(m_hWnd);
 	
@@ -317,50 +331,52 @@ BOOL Console::Create(TCHAR* pszConfigPath) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnDestroy() {
+void Console::OnDestroy() 
+{
 	
-	if (!m_bInitializing) {
-		::SetEvent(m_hQuitEvent);
-		::WaitForSingleObject(m_hMonitorThread, 2000);
-		::CloseHandle(m_hMonitorThread);
+	if (!m_bInitializing) 
+		{
+			::SetEvent(m_hQuitEvent);
+			::WaitForSingleObject(m_hMonitorThread, 2000);
+			::CloseHandle(m_hMonitorThread);
+			
+			// kill timers
+			::KillTimer(m_hWnd, TIMER_REPAINT_CHANGE);
+			if (m_dwMasterRepaintInt) ::KillTimer(m_hWnd, TIMER_REPAINT_MASTER);
+			
+			DestroyCursor();
+			
+			// cleanup graphics objects
+			if (m_hFontOld) ::SelectObject(m_hdcConsole, m_hFontOld);
+			if (m_hFont) ::DeleteObject(m_hFont);
+			
+			if (m_hBkBrush) ::DeleteObject(m_hBkBrush);
+			
+			if (m_hbmpConsoleOld) ::SelectObject(m_hdcConsole, m_hbmpConsoleOld);
+			if (m_hbmpConsole) ::DeleteObject(m_hbmpConsole);
 		
-		// kill timers
-		::KillTimer(m_hWnd, TIMER_REPAINT_CHANGE);
-		if (m_dwMasterRepaintInt) ::KillTimer(m_hWnd, TIMER_REPAINT_MASTER);
+			if (m_hbmpWindowOld) ::SelectObject(m_hdcWindow, m_hbmpWindowOld);
+			if (m_hbmpWindow) ::DeleteObject(m_hbmpWindow);
 		
-		DestroyCursor();
+			if (m_hbmpBackgroundOld) ::SelectObject(m_hdcBackground, m_hbmpBackgroundOld);
+			if (m_hbmpBackground) ::DeleteObject(m_hbmpBackground);
+			if (m_hdcBackground) ::DeleteDC(m_hdcBackground);
 		
-		// cleanup graphics objects
-		if (m_hFontOld) ::SelectObject(m_hdcConsole, m_hFontOld);
-		if (m_hFont) ::DeleteObject(m_hFont);
+			if (m_hbmpSelectionOld) ::SelectObject(m_hdcSelection, m_hbmpSelectionOld);
+			if (m_hbmpSelection)::DeleteObject(m_hbmpSelection);
+			if (m_hdcSelection) ::DeleteDC(m_hdcSelection);
 		
-		if (m_hBkBrush) ::DeleteObject(m_hBkBrush);
+			if (m_hbrushSelection) ::DeleteObject(m_hbrushSelection);
 		
-		if (m_hbmpConsoleOld) ::SelectObject(m_hdcConsole, m_hbmpConsoleOld);
-		if (m_hbmpConsole) ::DeleteObject(m_hbmpConsole);
+			::DestroyMenu(m_hConfigFilesMenu);
+			::DestroyMenu(m_hPopupMenu);
 		
-		if (m_hbmpWindowOld) ::SelectObject(m_hdcWindow, m_hbmpWindowOld);
-		if (m_hbmpWindow) ::DeleteObject(m_hbmpWindow);
+			SetTrayIcon(NIM_DELETE);
 		
-		if (m_hbmpBackgroundOld) ::SelectObject(m_hdcBackground, m_hbmpBackgroundOld);
-		if (m_hbmpBackground) ::DeleteObject(m_hbmpBackground);
-		if (m_hdcBackground) ::DeleteDC(m_hdcBackground);
-		
-		if (m_hbmpSelectionOld) ::SelectObject(m_hdcSelection, m_hbmpSelectionOld);
-		if (m_hbmpSelection)::DeleteObject(m_hbmpSelection);
-		if (m_hdcSelection) ::DeleteDC(m_hdcSelection);
-		
-		if (m_hbrushSelection) ::DeleteObject(m_hbrushSelection);
-		
-		::DestroyMenu(m_hConfigFilesMenu);
-		::DestroyMenu(m_hPopupMenu);
-		
-		SetTrayIcon(NIM_DELETE);
-		
-		::DeleteDC(m_hdcConsole);
-		::DeleteDC(m_hdcWindow);
-		::PostQuitMessage(0);
-	}
+			::DeleteDC(m_hdcConsole);
+			::DeleteDC(m_hdcWindow);
+			::PostQuitMessage(0);
+		}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -377,58 +393,62 @@ void Console::OnNcDestroy() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnPaint() {
+void Console::OnPaint() 
+{
 	
 	PAINTSTRUCT	paintStruct;
 	HDC hdc = ::BeginPaint(m_hWnd, &paintStruct);
 	
-	if (!m_nTextSelection) {
-		// if there's no selection, just blit console image
-		::BitBlt(
-			hdc, 
-			paintStruct.rcPaint.left, 
-			paintStruct.rcPaint.top, 
-			paintStruct.rcPaint.right - paintStruct.rcPaint.left + 1, 
-			paintStruct.rcPaint.bottom - paintStruct.rcPaint.top + 1, 
-			m_hdcConsole, 
-			paintStruct.rcPaint.left, 
-			paintStruct.rcPaint.top, 
-			SRCCOPY);
-	} else {
-		// there's a text selection, first compose the image in an off-screen
-		// buffer, and then blit it
-		::BitBlt(
-			m_hdcWindow, 
-			paintStruct.rcPaint.left, 
-			paintStruct.rcPaint.top, 
-			paintStruct.rcPaint.right - paintStruct.rcPaint.left + 1, 
-			paintStruct.rcPaint.bottom - paintStruct.rcPaint.top + 1, 
-			m_hdcConsole, 
-			paintStruct.rcPaint.left, 
-			paintStruct.rcPaint.top, 
-			SRCCOPY);
-		
-		::BitBlt(
-			m_hdcWindow, 
-			m_rectSelection.left, 
-			m_rectSelection.top, 
-			m_rectSelection.right - m_rectSelection.left, 
-			m_rectSelection.bottom - m_rectSelection.top, 
-			m_hdcSelection, 
-			0, 
-			0, 
-			SRCINVERT);
-		::BitBlt(
-			hdc, 
-			paintStruct.rcPaint.left, 
-			paintStruct.rcPaint.top, 
-			paintStruct.rcPaint.right - paintStruct.rcPaint.left + 1, 
-			paintStruct.rcPaint.bottom - paintStruct.rcPaint.top + 1, 
-			m_hdcWindow, 
-			paintStruct.rcPaint.left, 
-			paintStruct.rcPaint.top, 
-			SRCCOPY);
-	}
+	if (!m_nTextSelection) 
+		{
+			// if there's no selection, just blit console image
+			::BitBlt(
+							 hdc, 
+							 paintStruct.rcPaint.left, 
+							 paintStruct.rcPaint.top, 
+							 paintStruct.rcPaint.right - paintStruct.rcPaint.left + 1, 
+							 paintStruct.rcPaint.bottom - paintStruct.rcPaint.top + 1, 
+							 m_hdcConsole, 
+							 paintStruct.rcPaint.left, 
+							 paintStruct.rcPaint.top, 
+							 SRCCOPY);
+		} 
+	else
+		{
+			// there's a text selection, first compose the image in an off-screen
+			// buffer, and then blit it
+			::BitBlt(
+							 m_hdcWindow, 
+							 paintStruct.rcPaint.left, 
+							 paintStruct.rcPaint.top, 
+							 paintStruct.rcPaint.right - paintStruct.rcPaint.left + 1, 
+							 paintStruct.rcPaint.bottom - paintStruct.rcPaint.top + 1, 
+							 m_hdcConsole, 
+							 paintStruct.rcPaint.left, 
+							 paintStruct.rcPaint.top, 
+							 SRCCOPY);
+			
+			::BitBlt(
+							 m_hdcWindow, 
+							 m_rectSelection.left, 
+							 m_rectSelection.top, 
+							 m_rectSelection.right - m_rectSelection.left, 
+							 m_rectSelection.bottom - m_rectSelection.top, 
+							 m_hdcSelection, 
+							 0, 
+							 0, 
+							 SRCINVERT);
+			::BitBlt(
+							 hdc, 
+							 paintStruct.rcPaint.left, 
+							 paintStruct.rcPaint.top, 
+							 paintStruct.rcPaint.right - paintStruct.rcPaint.left + 1, 
+							 paintStruct.rcPaint.bottom - paintStruct.rcPaint.top + 1, 
+							 m_hdcWindow, 
+							 paintStruct.rcPaint.left, 
+							 paintStruct.rcPaint.top, 
+							 SRCCOPY);
+		}
 	
 	::EndPaint(m_hWnd, &paintStruct);
 }
@@ -444,144 +464,185 @@ void Console::OnPaintTimer() {
 	RefreshStdOut();
 	RefreshScreenBuffer();
 
-	if (GetChangeRate() > 15) {
-		::CopyMemory(m_pScreenBuffer, m_pScreenBufferNew, sizeof(CHAR_INFO) * m_dwRows * m_dwColumns);
-		RepaintWindow();
-	} else {
-		RepaintWindowChanges();
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::OnCursorTimer() {
-	if (m_pCursor) {
-		m_pCursor->PrepareNext();
-		DrawCursor();
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos) {
-
-	if (!(lpWndPos->flags & SWP_NOMOVE)) {
-		if (m_nSnapDst >= 0) {
-			// we'll snap Console window to the desktop edges
-			RECT rectDesktop;
-
-			if (g_bWin2000) {
-				POINT pt;
-				if (::GetCursorPos(&pt)) {
-					MONITORINFO monitorInfo;
-					monitorInfo.cbSize = sizeof(MONITORINFO);
-					if (g_pfnGetMonitorInfo(g_pfnMonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST), &monitorInfo)) {
-						rectDesktop = monitorInfo.rcWork;
-					}
-
-				} else {
-					rectDesktop.left	= ::GetSystemMetrics(SM_XVIRTUALSCREEN);
-					rectDesktop.top		= ::GetSystemMetrics(SM_YVIRTUALSCREEN);
-					rectDesktop.right	= rectDesktop.left + ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
-					rectDesktop.bottom	= rectDesktop.top + ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
-				}
-
-			} else {
-				// we keep this for WinNT compatibility
-
-				rectDesktop.left= 0;
-				rectDesktop.top	= 0;
-				rectDesktop.right	= ::GetSystemMetrics(SM_CXSCREEN);
-				rectDesktop.bottom	= ::GetSystemMetrics(SM_CYSCREEN);
-				
-				RECT rectTaskbar = {0, 0, 0, 0};
-				HWND hWndTaskbar = ::FindWindow(_T("Shell_TrayWnd"), _T(""));
-				
-				
-				if (hWndTaskbar) {
-					
-					::GetWindowRect(hWndTaskbar, &rectTaskbar);
-					
-					if ((rectTaskbar.top <= rectDesktop.top) && (rectTaskbar.left <= rectDesktop.left) && (rectTaskbar.right >= rectDesktop.right)) {
-						// top taskbar
-						rectDesktop.top += rectTaskbar.bottom;
-						
-					} else if ((rectTaskbar.top > rectDesktop.top) && (rectTaskbar.left <= rectDesktop.left)) {
-						// bottom taskbar
-						rectDesktop.bottom = rectTaskbar.top;
-						
-					} else if ((rectTaskbar.top <= rectDesktop.top) && (rectTaskbar.left > rectDesktop.left)) {
-						// right taskbar
-						rectDesktop.right = rectTaskbar.left;
-						
-					} else {
-						// left taskbar
-						rectDesktop.left += rectTaskbar.right;
-					}
-				}
-			}
-		
-			m_dwDocked = DOCK_NONE;
-			DWORD	dwLeftRight = 0;
-			DWORD	dwTopBottom = 0;
-			
-			// now, see if we're close to the edges
-			if (lpWndPos->x <= rectDesktop.left + m_nSnapDst) {
-				lpWndPos->x = rectDesktop.left;
-				dwLeftRight = 1;
-			}
-			
-			if (lpWndPos->x >= rectDesktop.right - m_nWindowWidth - m_nSnapDst) {
-				lpWndPos->x = rectDesktop.right - m_nWindowWidth;
-				dwLeftRight = 2;
-			}
-			
-			if (lpWndPos->y <= rectDesktop.top + m_nSnapDst) {
-				lpWndPos->y = rectDesktop.top;
-				dwTopBottom = 1;
-			}
-			
-			if (lpWndPos->y >= rectDesktop.bottom - m_nWindowHeight - m_nSnapDst) {
-				lpWndPos->y = rectDesktop.bottom - m_nWindowHeight;
-				dwTopBottom = 2;
-			}
-			
-			// now, see if the window is docked
-			if (dwLeftRight == 1) {
-				// left edge
-				if (dwTopBottom == 1) {
-					// top left
-					m_dwDocked = DOCK_TOP_LEFT;
-				} else if (dwTopBottom == 2) {
-					// bottom left
-					m_dwDocked = DOCK_BOTTOM_LEFT;
-				}
-			} else if (dwLeftRight == 2) {
-				// right edge
-				if (dwTopBottom == 1) {
-					// top right
-					m_dwDocked = DOCK_TOP_RIGHT;
-				} else if (dwTopBottom == 2) {
-					// bottom right
-					m_dwDocked = DOCK_BOTTOM_RIGHT;
-				}
-			}
+	if (GetChangeRate() > 15) 
+		{
+			::CopyMemory(m_pScreenBuffer, m_pScreenBufferNew, sizeof(CHAR_INFO) * m_dwRows * m_dwColumns);
+			RepaintWindow();
+		} 
+	else
+		{
+			RepaintWindowChanges();
 		}
-		
-		m_nX = lpWndPos->x;
-		m_nY = lpWndPos->y;
+}
 
-//		TRACE(_T("Win pos: %ix%i\n"), m_nX, m_nY);
+/////////////////////////////////////////////////////////////////////////////
 
-		// we need to repaint for relative backgrounds
-		if (m_bRelativeBackground && !m_bInitializing) RepaintWindow();
-	}
+
+/////////////////////////////////////////////////////////////////////////////
+
+void Console::OnCursorTimer() 
+{
+	if (m_pCursor) 
+		{
+			m_pCursor->PrepareNext();
+			DrawCursor();
+		}
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+
+void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos) 
+{
+	
+	if (!(lpWndPos->flags & SWP_NOMOVE)) 
+		{
+			if (m_nSnapDst >= 0) 
+				{
+					// we'll snap Console window to the desktop edges
+					RECT rectDesktop;
+					
+					if (g_bWin2000) 
+						{
+							POINT pt;
+							if (::GetCursorPos(&pt)) 
+								{
+									MONITORINFO monitorInfo;
+									monitorInfo.cbSize = sizeof(MONITORINFO);
+									if (g_pfnGetMonitorInfo(g_pfnMonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST), 
+																					&monitorInfo))
+										{
+											rectDesktop = monitorInfo.rcWork;
+										}
+									
+								} 
+							else 
+								{
+									rectDesktop.left	= ::GetSystemMetrics(SM_XVIRTUALSCREEN);
+									rectDesktop.top		= ::GetSystemMetrics(SM_YVIRTUALSCREEN);
+									rectDesktop.right	= rectDesktop.left + ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
+									rectDesktop.bottom	= rectDesktop.top + ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
+								}
+							
+						} 
+					else
+						{
+							// we keep this for WinNT compatibility
+							
+							rectDesktop.left= 0;
+							rectDesktop.top	= 0;
+							rectDesktop.right	= ::GetSystemMetrics(SM_CXSCREEN);
+							rectDesktop.bottom	= ::GetSystemMetrics(SM_CYSCREEN);
+							
+							RECT rectTaskbar = {0, 0, 0, 0};
+							HWND hWndTaskbar = ::FindWindow(_T("Shell_TrayWnd"), _T(""));
+							
+							
+							if (hWndTaskbar) 
+								{
+									
+									::GetWindowRect(hWndTaskbar, &rectTaskbar);
+									
+									if ((rectTaskbar.top <= rectDesktop.top) 
+											&& (rectTaskbar.left <= rectDesktop.left) 
+											&& (rectTaskbar.right >= rectDesktop.right)) 
+										{
+											// top taskbar
+											rectDesktop.top += rectTaskbar.bottom;
+											
+										} 
+									else if ((rectTaskbar.top > rectDesktop.top) 
+													 && (rectTaskbar.left <= rectDesktop.left)) 
+										{
+											// bottom taskbar
+											rectDesktop.bottom = rectTaskbar.top;
+											
+										} 
+									else if ((rectTaskbar.top <= rectDesktop.top) 
+													 && (rectTaskbar.left > rectDesktop.left)) 
+										{
+											// right taskbar
+											rectDesktop.right = rectTaskbar.left;
+											
+										} 
+									else 
+										{
+											// left taskbar
+											rectDesktop.left += rectTaskbar.right;
+										}
+								}
+						}
+					
+					m_dwDocked = DOCK_NONE;
+					DWORD	dwLeftRight = 0;
+					DWORD	dwTopBottom = 0;
+					
+					// now, see if we're close to the edges
+					if (lpWndPos->x <= rectDesktop.left + m_nSnapDst) 
+						{
+							lpWndPos->x = rectDesktop.left;
+							dwLeftRight = 1;
+						}
+					
+					if (lpWndPos->x >= rectDesktop.right - m_nWindowWidth - m_nSnapDst) 
+						{
+							lpWndPos->x = rectDesktop.right - m_nWindowWidth;
+							dwLeftRight = 2;
+						}
+					
+					if (lpWndPos->y <= rectDesktop.top + m_nSnapDst) 
+						{
+							lpWndPos->y = rectDesktop.top;
+							dwTopBottom = 1;
+						}
+					
+					if (lpWndPos->y >= rectDesktop.bottom - m_nWindowHeight - m_nSnapDst) 
+						{
+							lpWndPos->y = rectDesktop.bottom - m_nWindowHeight;
+							dwTopBottom = 2;
+						}
+					
+					// now, see if the window is docked
+					if (dwLeftRight == 1) 
+						{
+							// left edge
+							if (dwTopBottom == 1) 
+								{
+									// top left
+									m_dwDocked = DOCK_TOP_LEFT;
+								} 
+							else if (dwTopBottom == 2) 
+								{
+									// bottom left
+									m_dwDocked = DOCK_BOTTOM_LEFT;
+								}
+						} 
+					else if (dwLeftRight == 2) 
+						{
+							// right edge
+							if (dwTopBottom == 1) 
+								{
+									// top right
+									m_dwDocked = DOCK_TOP_RIGHT;
+								} 
+							else if (dwTopBottom == 2) 
+								{
+									// bottom right
+									m_dwDocked = DOCK_BOTTOM_RIGHT;
+								}
+						}
+				}
+			
+			m_nX = lpWndPos->x;
+			m_nY = lpWndPos->y;
+			
+			//		TRACE(_T("Win pos: %ix%i\n"), m_nX, m_nY);
+			
+			// we need to repaint for relative backgrounds
+			if (m_bRelativeBackground && !m_bInitializing) RepaintWindow();
+		}
 	
 	if (m_dwCurrentZOrder == Z_ORDER_ONBOTTOM) lpWndPos->hwndInsertAfter = HWND_BOTTOM;
 }
@@ -593,19 +654,24 @@ void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos) {
 
 void Console::OnActivateApp(BOOL bActivate, DWORD dwFlags) {
 	
-	if (m_pCursor) {
-		m_pCursor->SetState(bActivate);
-		DrawCursor();
-	}
-	
-	if ((m_dwTransparency == TRANSPARENCY_ALPHA) && (m_byInactiveAlpha > 0)) {
-		if (bActivate) {
-			g_pfnSetLayeredWndAttr(m_hWnd, m_crBackground, m_byAlpha, LWA_ALPHA);
-		} else {
-			g_pfnSetLayeredWndAttr(m_hWnd, m_crBackground, m_byInactiveAlpha, LWA_ALPHA);
+	if (m_pCursor) 
+		{
+			m_pCursor->SetState(bActivate);
+			DrawCursor();
 		}
-		
-	}
+	
+	if ((m_dwTransparency == TRANSPARENCY_ALPHA) && (m_byInactiveAlpha > 0)) 
+		{
+			if (bActivate) 
+				{
+					g_pfnSetLayeredWndAttr(m_hWnd, m_crBackground, m_byAlpha, LWA_ALPHA);
+				} 
+			else
+				{
+					g_pfnSetLayeredWndAttr(m_hWnd, m_crBackground, m_byInactiveAlpha, LWA_ALPHA);
+				}
+			
+		}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -613,62 +679,65 @@ void Console::OnActivateApp(BOOL bActivate, DWORD dwFlags) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnVScroll(WPARAM wParam) {
+void Console::OnVScroll(WPARAM wParam) 
+{
 	
 	TRACE(_T("VScroll\n"));
-
+	
 	int nCurrentPos = ::GetScrollPos(m_hWnd, SB_VERT);
 	int nDelta = 0;
 	
-	switch(LOWORD (wParam)) { 
+	switch(LOWORD (wParam)) 
+		{ 
+			
+		case SB_PAGEUP: 
+			nDelta = -5; 
+			break; 
+			
+		case SB_PAGEDOWN: 
+			nDelta = 5; 
+			break; 
+			
+		case SB_LINEUP: 
+			nDelta = -1; 
+			break; 
+			
+		case SB_LINEDOWN: 
+			nDelta = 1; 
+			break; 
+			
+		case SB_THUMBTRACK: 
+			nDelta = HIWORD(wParam) - nCurrentPos; 
+			break;
 		
-	case SB_PAGEUP: 
-		nDelta = -5; 
-		break; 
+		case SB_ENDSCROLL:
 		
-	case SB_PAGEDOWN: 
-		nDelta = 5; 
-		break; 
+			return;
 		
-	case SB_LINEUP: 
-		nDelta = -1; 
-		break; 
-		
-	case SB_LINEDOWN: 
-		nDelta = 1; 
-		break; 
-		
-	case SB_THUMBTRACK: 
-		nDelta = HIWORD(wParam) - nCurrentPos; 
-		break;
-		
-	case SB_ENDSCROLL:
-		
-		return;
-		
-	default: 
-		return;
-	}
+		default: 
+			return;
+		}
 	
-	if (nDelta = max(-nCurrentPos, min(nDelta, (int)(m_dwBufferRows-m_dwRows) - nCurrentPos))) {
+	if (nDelta = max(-nCurrentPos, min(nDelta, (int)(m_dwBufferRows-m_dwRows) - nCurrentPos))) 
+		{
+			
+			nCurrentPos += nDelta; 
+			
+			SMALL_RECT sr;
+			sr.Top = nDelta;
+			sr.Bottom = nDelta;
+			sr.Left = sr.Right = 0;
+			::SetConsoleWindowInfo(m_hStdOutFresh, FALSE, &sr);
 		
-		nCurrentPos += nDelta; 
+			SCROLLINFO si;
+			si.cbSize = sizeof(si); 
+			si.fMask  = SIF_POS; 
+			si.nPos   = nCurrentPos; 
+			::FlatSB_SetScrollInfo(m_hWnd, SB_VERT, &si, TRUE);
 		
-		SMALL_RECT sr;
-		sr.Top = nDelta;
-		sr.Bottom = nDelta;
-		sr.Left = sr.Right = 0;
-		::SetConsoleWindowInfo(m_hStdOutFresh, FALSE, &sr);
-		
-		SCROLLINFO si;
-		si.cbSize = sizeof(si); 
-		si.fMask  = SIF_POS; 
-		si.nPos   = nCurrentPos; 
-		::FlatSB_SetScrollInfo(m_hWnd, SB_VERT, &si, TRUE);
-		
-		// this seems to work/look much better than direct repainting...
-		::SetTimer(m_hWnd, TIMER_REPAINT_CHANGE, m_dwChangeRepaintInt, NULL);
-	}
+			// this seems to work/look much better than direct repainting...
+			::SetTimer(m_hWnd, TIMER_REPAINT_CHANGE, m_dwChangeRepaintInt, NULL);
+		}
 	
 }
 
@@ -677,7 +746,8 @@ void Console::OnVScroll(WPARAM wParam) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnInputLangChangeRequest(WPARAM wParam, LPARAM lParam) {
+void Console::OnInputLangChangeRequest(WPARAM wParam, LPARAM lParam) 
+{
 	::PostMessage(m_hWndConsole, WM_INPUTLANGCHANGEREQUEST, wParam, lParam);
 }
 
@@ -686,7 +756,8 @@ void Console::OnInputLangChangeRequest(WPARAM wParam, LPARAM lParam) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnLButtonDown(UINT uiFlags, POINTS points) {
+void Console::OnLButtonDown(UINT uiFlags, POINTS points) 
+{
 	
 	RECT windowRect;
 	::GetCursorPos(&m_mouseCursorOffset);
@@ -695,44 +766,54 @@ void Console::OnLButtonDown(UINT uiFlags, POINTS points) {
 	m_mouseCursorOffset.y -= windowRect.top;
 	
 	if (!m_bMouseDragable ||
-		(m_bInverseShift == !(uiFlags & MK_SHIFT))) {
-		
-		if (m_nCharWidth) {
+			(m_bInverseShift == !(uiFlags & MK_SHIFT))) 
+		{
 			
-			if (m_nTextSelection == TEXT_SELECTION_SELECTED) return;
+			if (m_nCharWidth) 
+				{
+					
+					if (m_nTextSelection == TEXT_SELECTION_SELECTED) return;
+					
+					// fixed-width characters
+					// start copy text selection
+					::SetCapture(m_hWnd);
+					
+					if (!m_nTextSelection) 
+						{
+							RECT rect;
+							rect.left = 0;
+							rect.top = 0;
+							rect.right = m_nClientWidth;
+							rect.bottom = m_nClientHeight;
+							::FillRect(m_hdcSelection, &rect, m_hbrushSelection);
+						}
+					
+					m_nTextSelection = TEXT_SELECTION_SELECTING;
+					
+					m_coordSelOrigin.X = min(max(points.x - m_nInsideBorder, 0) / m_nCharWidth, (short)(m_dwColumns-1));
+					m_coordSelOrigin.Y = min(max(points.y - m_nInsideBorder, 0) / m_nCharHeight, (short)(m_dwRows-1));
+					
+					m_rectSelection.left = m_rectSelection.right = 
+						m_coordSelOrigin.X * m_nCharWidth + m_nInsideBorder;
+					m_rectSelection.top = m_rectSelection.bottom = 
+						m_coordSelOrigin.Y * m_nCharHeight + m_nInsideBorder;
+					
+					TRACE(_T("Starting point: %ix%i\n"), m_coordSelOrigin.X, m_coordSelOrigin.Y);
+				}
 			
-			// fixed-width characters
-			// start copy text selection
-			::SetCapture(m_hWnd);
-			
-			if (!m_nTextSelection) {
-				RECT rect;
-				rect.left = 0;
-				rect.top = 0;
-				rect.right = m_nClientWidth;
-				rect.bottom = m_nClientHeight;
-				::FillRect(m_hdcSelection, &rect, m_hbrushSelection);
-			}
-			
-			m_nTextSelection = TEXT_SELECTION_SELECTING;
-			
-			m_coordSelOrigin.X = min(max(points.x - m_nInsideBorder, 0) / m_nCharWidth, m_dwColumns-1);
-			m_coordSelOrigin.Y = min(max(points.y - m_nInsideBorder, 0) / m_nCharHeight, m_dwRows-1);
-			
-			m_rectSelection.left = m_rectSelection.right = m_coordSelOrigin.X * m_nCharWidth + m_nInsideBorder;
-			m_rectSelection.top = m_rectSelection.bottom = m_coordSelOrigin.Y * m_nCharHeight + m_nInsideBorder;
-			
-			TRACE(_T("Starting point: %ix%i\n"), m_coordSelOrigin.X, m_coordSelOrigin.Y);
+		} 
+	else
+		{
+			if (m_nTextSelection) 
+				{
+					return;
+				} 
+			else if (m_bMouseDragable) 
+				{
+					// start to drag window
+					::SetCapture(m_hWnd);
+				}
 		}
-		
-	} else {
-		if (m_nTextSelection) {
-			return;
-		} else if (m_bMouseDragable) {
-			// start to drag window
-			::SetCapture(m_hWnd);
-		}
-	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -740,40 +821,50 @@ void Console::OnLButtonDown(UINT uiFlags, POINTS points) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnLButtonUp(UINT uiFlags, POINTS points) {
-
+void Console::OnLButtonUp(UINT uiFlags, POINTS points) 
+{
+	
 	if ((m_nTextSelection == TEXT_SELECTION_SELECTED) ||
-		// X Windows select/copy style
-		((m_nTextSelection == TEXT_SELECTION_SELECTING) && (m_bCopyOnSelect))) {
-		
-		// if the user clicked inside the selection rectangle, copy data
-		if ((points.x >= m_rectSelection.left) && 
-			(points.x <= m_rectSelection.right) && 
-			(points.y >= m_rectSelection.top) && 
-			(points.y <= m_rectSelection.bottom)) {
+			// X Windows select/copy style
+			((m_nTextSelection == TEXT_SELECTION_SELECTING) && (m_bCopyOnSelect))) 
+		{
 			
-			CopyTextToClipboard();
-		}
-		
-		if (m_bCopyOnSelect) ::ReleaseCapture();
-		ClearSelection();
-		
-	} else if (m_nTextSelection == TEXT_SELECTION_SELECTING) {
-
-		if ((m_rectSelection.left == m_rectSelection.right) &&
-			(m_rectSelection.top == m_rectSelection.bottom)) {
-
-			m_nTextSelection = TEXT_SELECTION_NONE;
+			// if the user clicked inside the selection rectangle, copy data
+			if ((points.x >= m_rectSelection.left) && 
+					(points.x <= m_rectSelection.right) && 
+					(points.y >= m_rectSelection.top) && 
+					(points.y <= m_rectSelection.bottom)) 
+				{
+					
+					CopyTextToClipboard();
+				}
 			
-		} else {
-			m_nTextSelection = TEXT_SELECTION_SELECTED;
+			if (m_bCopyOnSelect) ::ReleaseCapture();
+			ClearSelection();
+			
 		}
-		::ReleaseCapture();
-		
-	} else if (m_bMouseDragable) {
-		// end window drag
-		::ReleaseCapture();
-	}
+	else if (m_nTextSelection == TEXT_SELECTION_SELECTING) 
+		{
+			
+			if ((m_rectSelection.left == m_rectSelection.right) &&
+					(m_rectSelection.top == m_rectSelection.bottom)) 
+				{
+					
+					m_nTextSelection = TEXT_SELECTION_NONE;
+					
+				} 
+			else
+				{
+					m_nTextSelection = TEXT_SELECTION_SELECTED;
+				}
+			::ReleaseCapture();
+			
+		} 
+	else if (m_bMouseDragable) 
+		{
+			// end window drag
+			::ReleaseCapture();
+		}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -781,7 +872,8 @@ void Console::OnLButtonUp(UINT uiFlags, POINTS points) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnLButtonDblClick(UINT uiFlags, POINTS points) {
+void Console::OnLButtonDblClick(UINT uiFlags, POINTS points) 
+{
 	
 	ToggleWindowOnTop();
 }
@@ -793,22 +885,25 @@ void Console::OnLButtonDblClick(UINT uiFlags, POINTS points) {
 
 void Console::OnRButtonUp(UINT uiFlags, POINTS points) {
 	
-	if (uiFlags & MK_SHIFT) {
-		PasteClipoardText();
-	} else {
-
-		if (m_bPopupMenuDisabled) return;
-
-		POINT	point;
-		point.x = points.x;
-		point.y = points.y;
-		::ClientToScreen(m_hWnd, &point);
-		
-		HMENU	hPopup = ::GetSubMenu(m_hPopupMenu, 0);
-		
-		// show popup menu
-		::TrackPopupMenu(hPopup, 0, point.x, point.y, 0, m_hWnd, NULL);
-	}
+	if (uiFlags & MK_SHIFT) 
+		{
+			PasteClipoardText();
+		}
+	else 
+		{
+			
+			if (m_bPopupMenuDisabled) return;
+			
+			POINT	point;
+			point.x = points.x;
+			point.y = points.y;
+			::ClientToScreen(m_hWnd, &point);
+			
+			HMENU	hPopup = ::GetSubMenu(m_hPopupMenu, 0);
+			
+			// show popup menu
+			::TrackPopupMenu(hPopup, 0, point.x, point.y, 0, m_hWnd, NULL);
+		}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -832,82 +927,98 @@ void Console::OnMouseMove(UINT uiFlags, POINTS points) {
 	int		deltaX, deltaY;
 	POINT	point;
 
-	if (uiFlags & MK_LBUTTON) {
-
-		::GetWindowRect(m_hWnd, &windowRect);
-		
-		point.x = points.x;
-		point.y = points.y;
-		
-		::ClientToScreen(m_hWnd, &point);
-		
-		deltaX = point.x - windowRect.left - m_mouseCursorOffset.x;
-		deltaY = point.y - windowRect.top - m_mouseCursorOffset.y;
-		
-		if (deltaX | deltaY) {
-
-			TRACE(_T("m_nTextSelection: %i, Delta X: %i Delta Y: %i\n"), m_nTextSelection, deltaX, deltaY);
-
-			if (m_nTextSelection) { 
-				if ((!m_bMouseDragable) || (m_bInverseShift == !(uiFlags & MK_SHIFT))) {
-
-					// some text has been selected, just return
-					if (m_nTextSelection == TEXT_SELECTION_SELECTED) return;
-
-					// selecting text for copy/paste
-					COORD coordSel;
-
-					::InvalidateRect(m_hWnd, &m_rectSelection, FALSE);
+	if (uiFlags & MK_LBUTTON) 
+		{
+			
+			::GetWindowRect(m_hWnd, &windowRect);
+			
+			point.x = points.x;
+			point.y = points.y;
+			
+			::ClientToScreen(m_hWnd, &point);
+			
+			deltaX = point.x - windowRect.left - m_mouseCursorOffset.x;
+			deltaY = point.y - windowRect.top - m_mouseCursorOffset.y;
+			
+			if (deltaX | deltaY) 
+				{
 					
-					coordSel.X = min(max(points.x - m_nInsideBorder, 0) / m_nCharWidth, m_dwColumns-1);
-					coordSel.Y = min(max(points.y - m_nInsideBorder, 0) / m_nCharHeight, m_dwRows-1);
-
-					TRACE(_T("End point: %ix%i\n"), coordSel.X, coordSel.Y);
+					TRACE(_T("m_nTextSelection: %i, Delta X: %i Delta Y: %i\n"), 
+								m_nTextSelection, deltaX, deltaY);
 					
-					if (coordSel.X >= m_coordSelOrigin.X) {
-						m_rectSelection.left = m_coordSelOrigin.X * m_nCharWidth + m_nInsideBorder;
-						m_rectSelection.right = (coordSel.X + 1) * m_nCharWidth + m_nInsideBorder;
-					} else {
-						m_rectSelection.left = coordSel.X * m_nCharWidth + m_nInsideBorder;
-						m_rectSelection.right = (m_coordSelOrigin.X + 1) * m_nCharWidth + m_nInsideBorder;
-					}
-					
-					if (coordSel.Y >= m_coordSelOrigin.Y) {
-						m_rectSelection.top = m_coordSelOrigin.Y * m_nCharHeight + m_nInsideBorder;
-						m_rectSelection.bottom = (coordSel.Y + 1) * m_nCharHeight + m_nInsideBorder;
-					} else {
-						m_rectSelection.top = coordSel.Y * m_nCharHeight + m_nInsideBorder;
-						m_rectSelection.bottom = (m_coordSelOrigin.Y + 1) * m_nCharHeight + m_nInsideBorder;
-					}
-
-					TRACE(_T("Selection rect: %i,%i x %i,%i\n"), m_rectSelection.left, m_rectSelection.top, m_rectSelection.right, m_rectSelection.bottom);
-
-					::InvalidateRect(m_hWnd, &m_rectSelection, FALSE);
+					if (m_nTextSelection) 
+						{ 
+							if ((!m_bMouseDragable) || (m_bInverseShift == !(uiFlags & MK_SHIFT))) 
+								{
+									
+									// some text has been selected, just return
+									if (m_nTextSelection == TEXT_SELECTION_SELECTED) return;
+									
+									// selecting text for copy/paste
+									COORD coordSel;
+									
+									::InvalidateRect(m_hWnd, &m_rectSelection, FALSE);
+									
+									coordSel.X = min(max(points.x - m_nInsideBorder, 0) / m_nCharWidth, (short)(m_dwColumns-1));
+									coordSel.Y = min(max(points.y - m_nInsideBorder, 0) / m_nCharHeight, (short)(m_dwRows-1));
+									
+									TRACE(_T("End point: %ix%i\n"), coordSel.X, coordSel.Y);
+									
+									if (coordSel.X >= m_coordSelOrigin.X) 
+										{
+											m_rectSelection.left = m_coordSelOrigin.X * m_nCharWidth + m_nInsideBorder;
+											m_rectSelection.right = (coordSel.X + 1) * m_nCharWidth + m_nInsideBorder;
+										} 
+									else
+										{
+											m_rectSelection.left = coordSel.X * m_nCharWidth + m_nInsideBorder;
+											m_rectSelection.right = (m_coordSelOrigin.X + 1) * m_nCharWidth + m_nInsideBorder;
+										}
+									
+									if (coordSel.Y >= m_coordSelOrigin.Y) 
+										{
+											m_rectSelection.top = m_coordSelOrigin.Y * m_nCharHeight + m_nInsideBorder;
+											m_rectSelection.bottom = (coordSel.Y + 1) * m_nCharHeight + m_nInsideBorder;
+										} 
+									else 
+										{
+											m_rectSelection.top = coordSel.Y * m_nCharHeight + m_nInsideBorder;
+											m_rectSelection.bottom = (m_coordSelOrigin.Y + 1) * m_nCharHeight + m_nInsideBorder;
+										}
+									
+									TRACE(_T("Selection rect: %i,%i x %i,%i\n"), 
+												m_rectSelection.left, m_rectSelection.top, 
+												m_rectSelection.right, m_rectSelection.bottom);
+									
+									::InvalidateRect(m_hWnd, &m_rectSelection, FALSE);
+								}
+							
+						} 
+					else if (m_bMouseDragable) 
+						{
+							
+							// moving the window
+							HWND hwndZ;
+							switch (m_dwCurrentZOrder)
+								{
+								case Z_ORDER_REGULAR	: hwndZ = HWND_NOTOPMOST; break;
+								case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
+								case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
+								}
+							
+							::SetWindowPos(
+														 m_hWnd, 
+														 hwndZ, 
+														 windowRect.left + deltaX, 
+														 windowRect.top + deltaY, 
+														 0, 
+														 0,
+														 SWP_NOSIZE);
+							
+							::PostMessage(m_hWnd, WM_PAINT, 0, 0);
+						}
 				}
-				
-			} else if (m_bMouseDragable) {
-
-				// moving the window
-				HWND hwndZ;
-				switch (m_dwCurrentZOrder) {
-					case Z_ORDER_REGULAR	: hwndZ = HWND_NOTOPMOST; break;
-					case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
-					case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
-				}
-				
-				::SetWindowPos(
-					m_hWnd, 
-					hwndZ, 
-					windowRect.left + deltaX, 
-					windowRect.top + deltaY, 
-					0, 
-					0,
-					SWP_NOSIZE);
-
-				::PostMessage(m_hWnd, WM_PAINT, 0, 0);
-			}
 		}
-	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -915,26 +1026,33 @@ void Console::OnMouseMove(UINT uiFlags, POINTS points) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnSetCursor(WORD wHitTest, WORD wMouseMessage) {
+void Console::OnSetCursor(WORD wHitTest, WORD wMouseMessage) 
+{
 	
-	if (wHitTest == HTBORDER) {
-		if (wMouseMessage == WM_LBUTTONDOWN) {
-			if (m_bMouseDragable) {
-				// start to drag window
-				RECT windowRect;
-				::GetCursorPos(&m_mouseCursorOffset);
-				::GetWindowRect(m_hWnd, &windowRect);
-				m_mouseCursorOffset.x -= windowRect.left;
-				m_mouseCursorOffset.y -= windowRect.top;
-				::SetCapture(m_hWnd);
-			}
-		} else if (wMouseMessage == WM_LBUTTONUP) {
-			if (m_bMouseDragable) {
-				// end window drag
-				::ReleaseCapture();
-			}
+	if (wHitTest == HTBORDER) 
+		{
+			if (wMouseMessage == WM_LBUTTONDOWN) 
+				{
+					if (m_bMouseDragable) 
+						{
+							// start to drag window
+							RECT windowRect;
+							::GetCursorPos(&m_mouseCursorOffset);
+							::GetWindowRect(m_hWnd, &windowRect);
+							m_mouseCursorOffset.x -= windowRect.left;
+							m_mouseCursorOffset.y -= windowRect.top;
+							::SetCapture(m_hWnd);
+						}
+				} 
+			else if (wMouseMessage == WM_LBUTTONUP) 
+				{
+					if (m_bMouseDragable) 
+						{
+							// end window drag
+							::ReleaseCapture();
+						}
+				}
 		}
-	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -942,10 +1060,11 @@ void Console::OnSetCursor(WORD wHitTest, WORD wMouseMessage) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnInitMenuPopup(HMENU hMenu, UINT uiPos, BOOL bSysMenu) {
+void Console::OnInitMenuPopup(HMENU hMenu, UINT uiPos, BOOL bSysMenu) 
+{
 	
 	if ((hMenu != ::GetSubMenu(m_hPopupMenu, 0)) && (hMenu != m_hSysMenu)) return;
-
+	
 	// update configuration files submenu
 	UpdateConfigFilesSubmenu();
 }
@@ -955,27 +1074,30 @@ void Console::OnInitMenuPopup(HMENU hMenu, UINT uiPos, BOOL bSysMenu) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnDropFiles(HDROP hDrop) {
+void Console::OnDropFiles(HDROP hDrop) 
+{
 	
 	UINT	uiFilesCount = DragQueryFile(hDrop, 0xFFFFFFFF, NULL, 0);
 	tstring	strFilenames(_T(""));
-
+	
 	// concatenate all filenames
-	for (UINT i = 0; i < uiFilesCount; ++i) {
-		TCHAR	szFilename[MAX_PATH];
-		::ZeroMemory(szFilename, sizeof(szFilename));
-		
-		::DragQueryFile(hDrop, i, szFilename, MAX_PATH);
-
-		tstring strFilename(szFilename);
-
-		// if there are spaces in the filename, put quotes around it
-		if (strFilename.find(_T(" ")) != tstring::npos) strFilename = tstring(_T("\"")) + strFilename + tstring(_T("\""));
-		
-		if (i > 0) strFilenames += _T(" ");
-		strFilenames += strFilename;
-
-	}
+	for (UINT i = 0; i < uiFilesCount; ++i) 
+		{
+			TCHAR	szFilename[MAX_PATH];
+			::ZeroMemory(szFilename, sizeof(szFilename));
+			
+			::DragQueryFile(hDrop, i, szFilename, MAX_PATH);
+			
+			tstring strFilename(szFilename);
+			
+			// if there are spaces in the filename, put quotes around it
+			if (strFilename.find(_T(" ")) != tstring::npos) 
+				{ strFilename = tstring(_T("\"")) + strFilename + tstring(_T("\"")); }
+			
+			if (i > 0) strFilenames += _T(" ");
+			strFilenames += strFilename;
+			
+		}
 	::DragFinish(hDrop);
 	
 	SendTextToConsole(strFilenames.c_str());
@@ -988,10 +1110,11 @@ void Console::OnDropFiles(HDROP hDrop) {
 
 BOOL Console::OnCommand(WPARAM wParam, LPARAM lParam)
 {
-	if (HIWORD(wParam) == 0) {
-		// popup menu
-		return HandleMenuCommand(LOWORD(wParam));
-	}
+	if (HIWORD(wParam) == 0) 
+		{
+			// popup menu
+			return HandleMenuCommand(LOWORD(wParam));
+		}
 	
 	return TRUE;
 }
@@ -1001,8 +1124,9 @@ BOOL Console::OnCommand(WPARAM wParam, LPARAM lParam)
 
 /////////////////////////////////////////////////////////////////////////////
 
-BOOL Console::OnSysCommand(WPARAM wParam, LPARAM lParam) {
-
+BOOL Console::OnSysCommand(WPARAM wParam, LPARAM lParam) 
+{
+	
 	return HandleMenuCommand(wParam);
 }
 
@@ -1011,23 +1135,26 @@ BOOL Console::OnSysCommand(WPARAM wParam, LPARAM lParam) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnTrayNotify(WPARAM wParam, LPARAM lParam) {
+void Console::OnTrayNotify(WPARAM wParam, LPARAM lParam) 
+{
 	
-	switch (lParam) {
-		case WM_RBUTTONUP: {
-
-			if (m_bPopupMenuDisabled) return;
-
-			POINT	posCursor;
-			
-			::GetCursorPos(&posCursor);
-			// show popup menu
-			::SetForegroundWindow(m_hWnd);
-			::TrackPopupMenu(::GetSubMenu(m_hPopupMenu, 0), 0, posCursor.x, posCursor.y, 0, m_hWnd, NULL);
-			::PostMessage(m_hWnd, WM_NULL, 0, 0);
-			
-			return;
-						   }
+	switch (lParam) 
+		{
+		case WM_RBUTTONUP: 
+			{
+				
+				if (m_bPopupMenuDisabled) return;
+				
+				POINT	posCursor;
+				
+				::GetCursorPos(&posCursor);
+				// show popup menu
+				::SetForegroundWindow(m_hWnd);
+				::TrackPopupMenu(::GetSubMenu(m_hPopupMenu, 0), 0, posCursor.x, posCursor.y, 0, m_hWnd, NULL);
+				::PostMessage(m_hWnd, WM_NULL, 0, 0);
+				
+				return;
+			}
 			
 		case WM_LBUTTONDOWN: 
 			m_bHideWindow = false;
@@ -1042,7 +1169,7 @@ void Console::OnTrayNotify(WPARAM wParam, LPARAM lParam) {
 			return;
 			
 		default : return;
-	}
+		}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1050,9 +1177,11 @@ void Console::OnTrayNotify(WPARAM wParam, LPARAM lParam) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnWallpaperChanged(const TCHAR* pszFilename) {
+void Console::OnWallpaperChanged(const TCHAR* pszFilename) 
+{
 	
-	if (m_dwTransparency == TRANSPARENCY_FAKE) {
+	if (m_dwTransparency == TRANSPARENCY_FAKE) 
+		{
 		SetWindowTransparency();
 		CreateBackgroundBitmap();
 		RepaintWindow();
@@ -1065,749 +1194,8 @@ void Console::OnWallpaperChanged(const TCHAR* pszFilename) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-BOOL Console::GetOptions() {
-	
-	class XmlException {
-	public: XmlException(BOOL bRet) : m_bRet(bRet){};
-		BOOL m_bRet;
-	};
-	
-	BOOL bRet = FALSE;
-	
-	IStream*				pFileStream			= NULL;
-	IXMLDocument*			pConfigDoc			= NULL;
-	IPersistStreamInit*		pPersistStream		= NULL;
-	IXMLElement*			pRootElement		= NULL;
-	IXMLElementCollection*	pColl				= NULL;
-	IXMLElement*			pFontElement		= NULL;
-	IXMLElement*			pPositionElement	= NULL;
-	IXMLElement*			pAppearanceElement	= NULL;
-	IXMLElement*			pScrollbarElement	= NULL;
-	IXMLElement*			pBackgroundElement	= NULL;
-	IXMLElement*			pCursorElement		= NULL;
-	IXMLElement*			pBehaviorElement	= NULL;
-	
-	try {
-		::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-		
-		USES_CONVERSION;
-		
-		// open file stream
-		if (!SUCCEEDED(CreateFileStream(
-			m_strConfigFile.c_str(), 
-			GENERIC_READ,
-			0,
-			NULL,
-			OPEN_EXISTING,
-			0, 
-			NULL,
-			&pFileStream))) {
-			
-			throw XmlException(FALSE);
-		}
-		
-		// create XML document instance
-		if (!SUCCEEDED(::CoCreateInstance(
-			CLSID_XMLDocument, 
-			NULL, 
-			CLSCTX_INPROC_SERVER, 
-			IID_IXMLDocument, 
-			(void**)&pConfigDoc))) {
-			
-			throw XmlException(FALSE);
-		}
-		
-		// load the configuration file
-		pConfigDoc->QueryInterface(IID_IPersistStreamInit, (void **)&pPersistStream);
-		
-		if (!SUCCEEDED(pPersistStream->Load(pFileStream))) throw XmlException(FALSE);
-		
-		// see if we're dealing with the skin
-		if (!SUCCEEDED(pConfigDoc->get_root(&pRootElement))) throw XmlException(FALSE);
-		
-		CComVariantOut	varAttValue;
-		CComBSTROut		bstr;
-		CComBSTROut		strText;
-		tstring			strTempText(_T(""));
-		
-		// root element must be CONSOLE
-		pRootElement->get_tagName(bstr.Out());
-		bstr.ToUpper();
-		
-		if (!(bstr == CComBSTR(_T("CONSOLE")))) throw XmlException(FALSE);
-
-		pRootElement->getAttribute(CComBSTR(_T("title")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) {
-			m_strWindowTitle = OLE2T(varAttValue.bstrVal);
-			m_strWindowTitleCurrent = m_strWindowTitle;
-		}
-		
-		pRootElement->getAttribute(CComBSTR(_T("refresh")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_dwMasterRepaintInt = _ttol(OLE2T(varAttValue.bstrVal));
-		
-		pRootElement->getAttribute(CComBSTR(_T("change_refresh")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_dwChangeRepaintInt = _ttol(OLE2T(varAttValue.bstrVal));
-		if ((int)m_dwChangeRepaintInt < 5) m_dwChangeRepaintInt = 5;
-		
-		pRootElement->getAttribute(CComBSTR(_T("shell")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_strShell = OLE2T(varAttValue.bstrVal);
-		
-		pRootElement->getAttribute(CComBSTR(_T("editor")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_strConfigEditor = OLE2T(varAttValue.bstrVal);
-
-		pRootElement->getAttribute(CComBSTR(_T("editor_params")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_strConfigEditorParams = OLE2T(varAttValue.bstrVal);
-		
-		pRootElement->get_children(&pColl);
-		if (!pColl) throw XmlException(TRUE);
-
-		// get font settings
-		IXMLElementCollection*	pFontColl = NULL;
-		if (!SUCCEEDED(pColl->item(CComVariant(_T("font")), CComVariant(0), (IDispatch**)&pFontElement))) throw XmlException(FALSE);
-		if (pFontElement) {
-			if (!SUCCEEDED(pFontElement->get_children(&pFontColl))) throw XmlException(FALSE);
-
-			if (pFontColl) {
-				IXMLElement* pFontSubelement = NULL;
-				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("size")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					pFontSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_dwFontSize = _ttoi(OLE2T(strText));
-				}
-				SAFERELEASE(pFontSubelement);
-
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("italic")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					pFontSubelement->get_text(strText.Out());
-					m_bItalic = !_tcsicmp(OLE2T(strText), _T("true"));
-				}
-				SAFERELEASE(pFontSubelement);
-				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("bold")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					pFontSubelement->get_text(strText.Out());
-					m_bBold = !_tcsicmp(OLE2T(strText), _T("true"));
-				}
-				SAFERELEASE(pFontSubelement);
-				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("name")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					pFontSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_strFontName = OLE2T(strText);
-				}
-				SAFERELEASE(pFontSubelement);
-				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("shadow")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					BYTE r = 0;
-					BYTE g = 0;
-					BYTE b = 0;
-
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					
-					m_shadowColor = RGB(r, g, b);
-
-					pFontSubelement->getAttribute(CComBSTR(_T("distance")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_shadowDistance = _ttoi(OLE2T(varAttValue.bstrVal));
-				}
-
-
-				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("color")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					BYTE r = 0;
-					BYTE g = 0;
-					BYTE b = 0;
-					
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-					
-					m_bUseFontColor = TRUE;
-					m_crFontColor = RGB(r, g, b);
-				}
-				SAFERELEASE(pFontSubelement);
-
-				// get font color mapping
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("colors")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-
-					IXMLElementCollection*	pColorsColl = NULL;
-					
-					if (!SUCCEEDED(pFontSubelement->get_children(&pColorsColl))) throw XmlException(FALSE);
-					
-					if (pColorsColl) {
-
-						for (int i = 0; i < 16; ++i) {
-							IXMLElement* pColorSubelement = NULL;
-							TCHAR szColorName[32];
-
-							_sntprintf(szColorName, sizeof(szColorName)/sizeof(TCHAR), _T("color_%02i"), i);
-							
-							if (!SUCCEEDED(pColorsColl->item(CComVariant(szColorName), CComVariant(0), (IDispatch**)&pColorSubelement))) throw XmlException(FALSE);
-							if (pColorSubelement) {
-
-								BYTE r = 0;
-								BYTE g = 0;
-								BYTE b = 0;
-								
-								varAttValue.Clear();
-								pColorSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-								if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-								varAttValue.Clear();
-								pColorSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-								if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-								varAttValue.Clear();
-								pColorSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-								if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-								
-								Console::m_arrConsoleColors[i] = RGB(r, g, b);
-							}
-
-							SAFERELEASE(pColorSubelement);
-						}
-					}
-					SAFERELEASE(pColorsColl);
-				}
-				SAFERELEASE(pFontSubelement);
-			}				
-			SAFERELEASE(pFontColl);
-		}
-	
-		// get position settings
-		IXMLElementCollection*	pPositionColl = NULL;
-		if (!SUCCEEDED(pColl->item(CComVariant(_T("position")), CComVariant(0), (IDispatch**)&pPositionElement))) throw XmlException(FALSE);
-		if (pPositionElement) {
-			if (!SUCCEEDED(pPositionElement->get_children(&pPositionColl))) throw XmlException(FALSE);
-			
-			if (pPositionColl) {
-				IXMLElement* pPositionSubelement = NULL;
-				
-				if (!m_bReloading) {
-					if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("x")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-					if (pPositionSubelement) {
-						pPositionSubelement->get_text(strText.Out());
-						if (strText.Length() > 0) m_nX = _ttoi(OLE2T(strText));
-					}
-					SAFERELEASE(pPositionSubelement);
-					
-					if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("y")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-					if (pPositionSubelement) {
-						pPositionSubelement->get_text(strText.Out());
-						if (strText.Length() > 0) m_nY = _ttoi(OLE2T(strText));
-					}
-					SAFERELEASE(pPositionSubelement);
-				}
-				
-				if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("docked")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-				if (pPositionSubelement) {
-					pPositionSubelement->get_text(strText.Out());
-					strTempText = OLE2T(strText);
-					
-					if (!_tcsicmp(strTempText.c_str(), _T("top left"))) {
-						m_dwDocked = DOCK_TOP_LEFT;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("top right"))) {
-						m_dwDocked = DOCK_TOP_RIGHT;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("bottom right"))) {
-						m_dwDocked = DOCK_BOTTOM_RIGHT;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("bottom left"))) {
-						m_dwDocked = DOCK_BOTTOM_LEFT;
-					} else {
-						m_dwDocked = DOCK_NONE;
-					}
-				}
-				SAFERELEASE(pPositionSubelement);
-				
-				if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("snap_distance")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-				if (pPositionSubelement) {
-					pPositionSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_nSnapDst = _ttoi(OLE2T(strText));
-				}
-				SAFERELEASE(pPositionSubelement);
-				
-				if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("z_order")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-				if (pPositionSubelement) {
-					pPositionSubelement->get_text(strText.Out());
-					strTempText = OLE2T(strText);
-					
-					if (!_tcsicmp(strTempText.c_str(), _T("regular"))) {
-						m_dwCurrentZOrder = Z_ORDER_REGULAR;
-						m_dwOriginalZOrder = Z_ORDER_REGULAR;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("on top"))) {
-						m_dwCurrentZOrder = Z_ORDER_ONTOP;
-						m_dwOriginalZOrder = Z_ORDER_ONTOP;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("on bottom"))) {
-						m_dwCurrentZOrder = Z_ORDER_ONBOTTOM;
-						m_dwOriginalZOrder = Z_ORDER_ONBOTTOM;
-					} else {
-						m_dwCurrentZOrder = Z_ORDER_REGULAR;
-						m_dwOriginalZOrder = Z_ORDER_REGULAR;
-					}
-				}
-				SAFERELEASE(pPositionSubelement);
-			}
-			
-			SAFERELEASE(pPositionColl);
-		}
-
-		// get appearance settings
-		IXMLElementCollection*	pAppearanceColl = NULL;
-		if (!SUCCEEDED(pColl->item(CComVariant(_T("appearance")), CComVariant(0), (IDispatch**)&pAppearanceElement))) throw XmlException(FALSE);
-		if (pAppearanceElement) {
-			if (!SUCCEEDED(pAppearanceElement->get_children(&pAppearanceColl))) throw XmlException(FALSE);
-			
-			if (pAppearanceColl) {
-				IXMLElement* pAppearanaceSubelement = NULL;
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("hide_console")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bHideConsole = TRUE;
-					} else {
-						m_bHideConsole = FALSE;
-					}
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("hide_console_timeout")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_dwHideConsoleTimeout = _ttoi(OLE2T(strText));
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("start_minimized")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bStartMinimized = TRUE;
-					} else {
-						m_bStartMinimized = FALSE;
-					}
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				IXMLElementCollection*	pScrollbarColl = NULL;
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("scrollbar")), CComVariant(0), (IDispatch**)&pScrollbarElement))) throw XmlException(FALSE);
-				if (pScrollbarElement) {
-					if (!SUCCEEDED(pScrollbarElement->get_children(&pScrollbarColl))) throw XmlException(FALSE);
-					
-					if (pScrollbarColl) {
-						IXMLElement* pScrollbarSubelement = NULL;
-						
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("color")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							BYTE r = 0;
-							BYTE g = 0;
-							BYTE b = 0;
-							
-							pScrollbarSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-							pScrollbarSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-							pScrollbarSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-							
-							m_crScrollbarColor = RGB(r, g, b);
-						}
-						SAFERELEASE(pScrollbarSubelement);
-						
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("style")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							pScrollbarSubelement->get_text(strText.Out());
-							strTempText = OLE2T(strText);
-							
-							if (!_tcsicmp(strTempText.c_str(), _T("regular"))) {
-								m_nScrollbarStyle = FSB_REGULAR_MODE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("flat"))) {
-								m_nScrollbarStyle = FSB_FLAT_MODE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("encarta"))) {
-								m_nScrollbarStyle = FSB_ENCARTA_MODE;
-							}
-						}
-						SAFERELEASE(pScrollbarSubelement);
-
-
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("width")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							pScrollbarSubelement->get_text(strText.Out());
-							if (strText.Length() > 0) m_nScrollbarWidth = _ttoi(OLE2T(strText));
-						}
-						SAFERELEASE(pScrollbarSubelement);
-						
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("button_height")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							pScrollbarSubelement->get_text(strText.Out());
-							if (strText.Length() > 0) m_nScrollbarButtonHeight = _ttoi(OLE2T(strText));
-						}
-						SAFERELEASE(pScrollbarSubelement);
-
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("thumb_height")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							pScrollbarSubelement->get_text(strText.Out());
-							if (strText.Length() > 0) m_nScrollbarThunmbHeight = _ttoi(OLE2T(strText));
-						}
-						SAFERELEASE(pScrollbarSubelement);
-					}
-					SAFERELEASE(pScrollbarColl);
-				}
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("border")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true")) || !_tcsicmp(OLE2T(strText), _T("regular"))) {
-						m_dwWindowBorder = BORDER_REGULAR;
-					} else if (!_tcsicmp(OLE2T(strText), _T("thin"))) {
-						m_dwWindowBorder = BORDER_THIN;
-					} else {
-						m_dwWindowBorder = BORDER_NONE;
-					}
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("inside_border")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_nInsideBorder = _ttoi(OLE2T(strText));
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-				
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("taskbar_button")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("hide"))) {
-						m_dwTaskbarButton = TASKBAR_BUTTON_HIDE;
-					} else if (!_tcsicmp(OLE2T(strText), _T("tray"))) { 
-						m_dwTaskbarButton = TASKBAR_BUTTON_TRAY;
-					} else {
-						m_dwTaskbarButton = TASKBAR_BUTTON_NORMAL;
-					}
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("size")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("rows")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_dwRows = _ttoi(OLE2T(varAttValue.bstrVal));
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("columns")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_dwColumns = _ttoi(OLE2T(varAttValue.bstrVal));
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("buffer_rows")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) {
-						m_dwBufferRows = _ttoi(OLE2T(varAttValue.bstrVal));
-						m_bUseTextBuffer = TRUE;
-					} else {
-						m_dwBufferRows = m_dwRows;
-					}
-					if (m_dwBufferRows < m_dwRows) m_dwBufferRows = m_dwRows;
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-				
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("transparency")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("alpha")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_byAlpha = (BYTE)_ttoi(OLE2T(varAttValue.bstrVal));
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("inactive_alpha")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_byInactiveAlpha = (BYTE)_ttoi(OLE2T(varAttValue.bstrVal));
-
-					pAppearanaceSubelement->get_text(strText.Out());
-					strTempText = OLE2T(strText);
-					
-					if (!_tcsicmp(strTempText.c_str(), _T("none"))) {
-						m_dwTransparency = TRANSPARENCY_NONE;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("alpha"))) {
-						m_dwTransparency = TRANSPARENCY_ALPHA;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("color key"))) {
-						m_dwTransparency = TRANSPARENCY_COLORKEY;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("fake"))) {
-						m_dwTransparency = TRANSPARENCY_FAKE;
-					}
-					
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-				
-				// get background settings
-				IXMLElementCollection*	pBackgroundColl = NULL;
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("background")), CComVariant(0), (IDispatch**)&pBackgroundElement))) throw XmlException(FALSE);
-				if (pBackgroundElement) {
-					if (!SUCCEEDED(pBackgroundElement->get_children(&pBackgroundColl))) throw XmlException(FALSE);
-					
-					if (pBackgroundColl) {
-						IXMLElement* pBackgroundSubelement = NULL;
-						
-						if (!SUCCEEDED(pBackgroundColl->item(CComVariant(_T("color")), CComVariant(0), (IDispatch**)&pBackgroundSubelement))) throw XmlException(FALSE);
-						if (pBackgroundSubelement) {
-							BYTE r = 0;
-							BYTE g = 0;
-							BYTE b = 0;
-							
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-							
-							m_crBackground = RGB(r, g, b);
-							m_bBkColorSet = TRUE;								
-						}
-						SAFERELEASE(pBackgroundSubelement);
-
-						if (!SUCCEEDED(pBackgroundColl->item(CComVariant(_T("tint")), CComVariant(0), (IDispatch**)&pBackgroundSubelement))) throw XmlException(FALSE);
-						if (pBackgroundSubelement) {
-							BYTE r = 0;
-							BYTE g = 0;
-							BYTE b = 0;
-							
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) m_byTintR = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) m_byTintG = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) m_byTintB = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("opacity")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) m_byTintOpacity = _ttoi(OLE2T(varAttValue.bstrVal));
-							
-							if (m_byTintOpacity > 100) m_byTintOpacity = 50;
-							m_bTintSet = TRUE;								
-						}
-						SAFERELEASE(pBackgroundSubelement);
-						
-						if (!SUCCEEDED(pBackgroundColl->item(CComVariant(_T("image")), CComVariant(0), (IDispatch**)&pBackgroundSubelement))) throw XmlException(FALSE);
-						if (pBackgroundSubelement) {
-
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("style")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) {
-								if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("resize"))) {
-									m_dwBackgroundStyle = BACKGROUND_STYLE_RESIZE;
-								} else if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("center"))) {
-									m_dwBackgroundStyle = BACKGROUND_STYLE_CENTER;
-								} else if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("tile"))) {
-									m_dwBackgroundStyle = BACKGROUND_STYLE_TILE;
-								}
-							}
-
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("relative")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) {
-								if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("true"))) {
-									m_bRelativeBackground = TRUE;
-								} else {
-									m_bRelativeBackground = FALSE;
-								}
-							}
-
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("extend")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) {
-								if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("true"))) {
-									m_bExtendBackground = TRUE;
-								} else {
-									m_bExtendBackground = FALSE;
-								}
-							}
-							
-							pBackgroundSubelement->get_text(strText.Out());
-							m_strBackgroundFile = OLE2T(strText);
-							m_bBitmapBackground = TRUE;
-						}
-						SAFERELEASE(pBackgroundSubelement);
-					}
-					SAFERELEASE(pBackgroundColl);
-				}
-				
-				IXMLElementCollection*	pCursorColl = NULL;
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("cursor")), CComVariant(0), (IDispatch**)&pCursorElement))) throw XmlException(FALSE);
-				if (pCursorElement) {
-					if (!SUCCEEDED(pCursorElement->get_children(&pCursorColl))) throw XmlException(FALSE);
-					
-					if (pCursorColl) {
-						IXMLElement* pCursorSubelement = NULL;
-
-						if (!SUCCEEDED(pCursorColl->item(CComVariant(_T("color")), CComVariant(0), (IDispatch**)&pCursorSubelement))) throw XmlException(FALSE);
-						if (pCursorSubelement) {
-							BYTE r = 0;
-							BYTE g = 0;
-							BYTE b = 0;
-							
-							pCursorSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-							pCursorSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-							pCursorSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-							
-							m_crCursorColor = RGB(r, g, b);
-						}
-						SAFERELEASE(pCursorSubelement);
-						
-						if (!SUCCEEDED(pCursorColl->item(CComVariant(_T("style")), CComVariant(0), (IDispatch**)&pCursorSubelement))) throw XmlException(FALSE);
-						if (pCursorSubelement) {
-							pCursorSubelement->get_text(strText.Out());
-							strTempText = OLE2T(strText);
-							
-							if (!_tcsicmp(strTempText.c_str(), _T("none"))) {
-								m_dwCursorStyle = CURSOR_STYLE_NONE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("XTerm"))) {
-								m_dwCursorStyle = CURSOR_STYLE_XTERM;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("block"))) {
-								m_dwCursorStyle = CURSOR_STYLE_BLOCK;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("noblink block"))) {
-								m_dwCursorStyle = CURSOR_STYLE_NBBLOCK;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("pulse block"))) {
-								m_dwCursorStyle = CURSOR_STYLE_PULSEBLOCK;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("bar"))) {
-								m_dwCursorStyle = CURSOR_STYLE_BAR;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("console"))) {
-								m_dwCursorStyle = CURSOR_STYLE_CONSOLE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("noblink line"))) {
-								m_dwCursorStyle = CURSOR_STYLE_NBHLINE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("horizontal line"))) {
-								m_dwCursorStyle = CURSOR_STYLE_HLINE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("vertical line"))) {
-								m_dwCursorStyle = CURSOR_STYLE_VLINE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("rect"))) {
-								m_dwCursorStyle = CURSOR_STYLE_RECT;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("noblink rect"))) {
-								m_dwCursorStyle = CURSOR_STYLE_NBRECT;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("pulse rect"))) {
-								m_dwCursorStyle = CURSOR_STYLE_PULSERECT;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("fading block"))) {
-								m_dwCursorStyle = CURSOR_STYLE_FADEBLOCK;
-							}
-						}
-						SAFERELEASE(pCursorSubelement);
-					}
-					SAFERELEASE(pCursorColl);
-				}
-				
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("icon")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_strIconFilename = OLE2T(strText);
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-				
-			}
-			SAFERELEASE(pAppearanceColl);
-		}
-
-		// get behaviour settings
-		IXMLElementCollection*	pBehaviorColl = NULL;
-		if (!SUCCEEDED(pColl->item(CComVariant(_T("behaviour")), CComVariant(0), (IDispatch**)&pBehaviorElement))) {
-			if (!SUCCEEDED(pColl->item(CComVariant(_T("behavior")), CComVariant(0), (IDispatch**)&pBehaviorElement))) throw XmlException(FALSE);
-		}
-
-		if (pBehaviorElement) {
-			if (!SUCCEEDED(pBehaviorElement->get_children(&pBehaviorColl))) throw XmlException(FALSE);
-			
-			if (pBehaviorColl) {
-				IXMLElement* pBehaviourSubelement = NULL;
-				
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("mouse_drag")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bMouseDragable = TRUE;
-					} else {
-						m_bMouseDragable = FALSE;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-				
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("copy_on_select")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bCopyOnSelect = TRUE;
-					} else {
-						m_bCopyOnSelect = FALSE;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-				
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("inverse_shift")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bInverseShift = TRUE;
-					} else {
-						m_bInverseShift = FALSE;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-				
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("reload_new_config")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("yes"))) {
-						m_dwReloadNewConfig = RELOAD_NEW_CONFIG_YES;
-					} else if (!_tcsicmp(OLE2T(strText), _T("no"))) {
-						m_dwReloadNewConfig = RELOAD_NEW_CONFIG_NO;
-					} else {
-						m_dwReloadNewConfig = RELOAD_NEW_CONFIG_PROMPT;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("disable_menu")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bPopupMenuDisabled = TRUE;
-					} else {
-						m_bPopupMenuDisabled = FALSE;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-				
-			}
-			SAFERELEASE(pBehaviorColl);
-		}
-		
-		bRet = TRUE;
-
-	} catch (const XmlException& e) {
-		bRet = e.m_bRet;
-	}
-
-	SAFERELEASE(pBehaviorElement);
-	SAFERELEASE(pCursorElement);
-	SAFERELEASE(pBackgroundElement);
-	SAFERELEASE(pScrollbarElement);
-	SAFERELEASE(pAppearanceElement);
-	SAFERELEASE(pPositionElement);
-	SAFERELEASE(pFontElement);
-	SAFERELEASE(pColl);
-	SAFERELEASE(pRootElement);
-	SAFERELEASE(pPersistStream);
-	SAFERELEASE(pConfigDoc);
-	SAFERELEASE(pFileStream);
-
-	::CoUninitialize();
-	return bRet;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-BOOL Console::RegisterWindowClasses() {
+BOOL Console::RegisterWindowClasses() 
+{
 	WNDCLASSEX wcx; 
 
 	// register the Console window class
@@ -1852,7 +1240,8 @@ BOOL Console::RegisterWindowClasses() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-BOOL Console::SetupMenus() {
+BOOL Console::SetupMenus() 
+{
 	
 	MENUITEMINFO	mii;
 	
@@ -1861,26 +1250,70 @@ BOOL Console::SetupMenus() {
 	if ((m_hConfigFilesMenu = ::CreateMenu()) == NULL) return FALSE;
 	
 	// add stuff to the system menu
-	TCHAR*			arrMenuItems[] = {_T("Read&me"), _T("&About Console"), _T(""), _T("&Copy"), _T("&Paste"), _T(""), _T("Always on &top"), _T("&Hide console"), _T(""), _T("&Select configuration file"), _T("&Edit configuration file"), _T("&Reload settings"), _T("")};
-	DWORD			arrMenuTypes[] = {MFT_STRING, MFT_STRING, MFT_SEPARATOR, MFT_STRING, MFT_STRING, MFT_SEPARATOR, MFT_STRING, MFT_STRING, MFT_SEPARATOR, MFT_STRING, MFT_STRING, MFT_STRING, MFT_SEPARATOR};
-	DWORD			arrMenuIDs[] = {ID_SHOW_README_FILE, ID_ABOUT, 0, ID_COPY, ID_PASTE, 0, ID_TOGGLE_ONTOP, ID_HIDE_CONSOLE, 0, ID_SEL_CONFIG_FILE, ID_EDIT_CONFIG_FILE, ID_RELOAD_SETTINGS, 0};
+	TCHAR*			arrMenuItems[] = {
+		_T("Read&me"), 
+		_T("&About Console"), 
+		_T(""), 
+		_T("&Copy"), 
+		_T("&Paste"), 
+		_T(""), 
+		_T("Always on &top"), 
+		_T("&Hide console"), 
+		_T(""), 
+		_T("&Select configuration file"), 
+		_T("&Edit configuration file"), 
+		_T("&Reload settings"), 
+		_T("")};
+	
+	DWORD			arrMenuTypes[] = {
+		MFT_STRING, 
+		MFT_STRING, 
+		MFT_SEPARATOR, 
+		MFT_STRING, 
+		MFT_STRING, 
+		MFT_SEPARATOR, 
+		MFT_STRING, 
+		MFT_STRING, 
+		MFT_SEPARATOR, 
+		MFT_STRING, 
+		MFT_STRING, 
+		MFT_STRING, 
+		MFT_SEPARATOR};
+	DWORD			arrMenuIDs[] = {
+		ID_SHOW_README_FILE, 
+		ID_ABOUT, 
+		0, 
+		ID_COPY, 
+		ID_PASTE, 
+		0, 
+		ID_TOGGLE_ONTOP, 
+		ID_HIDE_CONSOLE, 
+		0, 
+		ID_SEL_CONFIG_FILE, 
+		ID_EDIT_CONFIG_FILE, 
+		ID_RELOAD_SETTINGS, 
+		0};
 	
 	m_hSysMenu = ::GetSystemMenu(m_hWnd, FALSE);
 	
-	for (int i = 0; i < sizeof(arrMenuIDs)/sizeof(arrMenuIDs[0]); ++i) {
-		::ZeroMemory(&mii, sizeof(MENUITEMINFO));
-		mii.cbSize		= sizeof(MENUITEMINFO);
-		mii.fMask		= MIIM_TYPE | MIIM_ID;
-		mii.fType		= arrMenuTypes[i];
-		if (mii.fType == MFT_STRING) {
-			mii.wID			= arrMenuIDs[i];
-			mii.dwTypeData	= arrMenuItems[i];
-			mii.cch			= _tcslen(arrMenuItems[i]);
-		} else {
-			mii.wID			= 0;
+	for (int i = 0; i < sizeof(arrMenuIDs)/sizeof(arrMenuIDs[0]); ++i) 
+		{
+			::ZeroMemory(&mii, sizeof(MENUITEMINFO));
+			mii.cbSize		= sizeof(MENUITEMINFO);
+			mii.fMask		= MIIM_TYPE | MIIM_ID;
+			mii.fType		= arrMenuTypes[i];
+			if (mii.fType == MFT_STRING) 
+				{
+					mii.wID			= arrMenuIDs[i];
+					mii.dwTypeData	= arrMenuItems[i];
+					mii.cch			= _tcslen(arrMenuItems[i]);
+				} 
+			else 
+				{
+					mii.wID			= 0;
+				}
+			::InsertMenuItem(m_hSysMenu, SC_CLOSE, FALSE, &mii);
 		}
-		::InsertMenuItem(m_hSysMenu, SC_CLOSE, FALSE, &mii);
-	}
 	
 	// set config files menu as a submenu of "Select configuration file" item
 	// in the popup and system menus
@@ -1903,75 +1336,78 @@ BOOL Console::SetupMenus() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-BOOL Console::CreateConsoleWindow() {
-
+BOOL Console::CreateConsoleWindow() 
+{
 	// create the window
 	DWORD dwWindowStyle = WS_VSCROLL;
-	switch (m_dwWindowBorder) {
-	case BORDER_NONE : 
-		dwWindowStyle |= WS_POPUPWINDOW & ~WS_BORDER;
-		break;
-	case BORDER_REGULAR :
-		dwWindowStyle |= WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX;
-		break;
-		
-	case BORDER_THIN :
-		dwWindowStyle |= WS_POPUPWINDOW;
-		break;
-		
-	default: dwWindowStyle |= WS_POPUPWINDOW & ~WS_BORDER;
-	}
+	switch (m_dwWindowBorder) 
+		{
+		case BORDER_NONE : 
+			dwWindowStyle |= WS_POPUPWINDOW & ~WS_BORDER;
+			break;
+		case BORDER_REGULAR :
+			dwWindowStyle |= WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX;
+			break;
+			
+		case BORDER_THIN :
+			dwWindowStyle |= WS_POPUPWINDOW;
+			break;
+			
+		default: dwWindowStyle |= WS_POPUPWINDOW & ~WS_BORDER;
+		}
 	
 	// If the taskbar style is set to hide or tray, we create an invisible window
 	// to parent the main window to. This hides the taskbar button while allowing
 	// us to use the normal title bar.
-	if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) {
-		if ((m_hwndInvisParent = ::CreateWindowEx(
-			WS_EX_TOOLWINDOW,
-			Console::m_szHiddenParentClass,
-			_T(""),
-			WS_POPUP,
-			0,
-			0,
-			0,
-			0,
-			NULL,
-			NULL,
-			g_hInstance,
-			NULL)) == NULL) {
+	if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) 
+		{
+			if ((m_hwndInvisParent = ::CreateWindowEx(
+																								WS_EX_TOOLWINDOW,
+																								Console::m_szHiddenParentClass,
+																								_T(""),
+																								WS_POPUP,
+																								0,
+																								0,
+																								0,
+																								0,
+																								NULL,
+																								NULL,
+																								g_hInstance,
+																								NULL)) == NULL) 
+				{
+					return FALSE;
+				}
 			
-			return FALSE;
+			// don't let the user minimize it if there's no way to restore it
+			if (m_dwTaskbarButton == TASKBAR_BUTTON_HIDE) dwWindowStyle &= ~WS_MINIMIZEBOX;
 		}
-		
-		// don't let the user minimize it if there's no way to restore it
-		if (m_dwTaskbarButton == TASKBAR_BUTTON_HIDE) dwWindowStyle &= ~WS_MINIMIZEBOX;
-	}
 	
 	
 	if ((m_hWnd = ::CreateWindowEx(
-		0, //m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL ? WS_EX_TOOLWINDOW : 0,
-		Console::m_szConsoleClass, 
-		m_strWindowTitle.c_str(),
-		dwWindowStyle,
-		((m_nX == -1) || (m_nY == -1)) ? CW_USEDEFAULT : 0,
-		0,
-		0,
-		0,
-		m_hwndInvisParent,
-		NULL,
-		g_hInstance,
-		NULL)) == NULL) {
-		
-		return FALSE;
-	}
-
-	if ((m_nX == -1) || (m_nY == -1)) {
-		RECT rectWindow;
-
-		::GetWindowRect(m_hWnd, &rectWindow);
-		m_nX = (int)rectWindow.left;
-		m_nY = (int)rectWindow.top;
-	}
+																 0, //m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL ? WS_EX_TOOLWINDOW : 0,
+																 Console::m_szConsoleClass, 
+																 m_strWindowTitle.c_str(),
+																 dwWindowStyle,
+																 ((m_nX == -1) || (m_nY == -1)) ? CW_USEDEFAULT : 0,
+																 0,
+																 0,
+																 0,
+																 m_hwndInvisParent,
+																 NULL,
+																 g_hInstance,
+																 NULL)) == NULL) 
+		{
+			return FALSE;
+		}
+	
+	if ((m_nX == -1) || (m_nY == -1)) 
+		{
+			RECT rectWindow;
+			
+			::GetWindowRect(m_hWnd, &rectWindow);
+			m_nX = (int)rectWindow.left;
+			m_nY = (int)rectWindow.top;
+		}
 
 	return TRUE;
 }
@@ -1981,27 +1417,27 @@ BOOL Console::CreateConsoleWindow() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::CreateNewFont() {
-	
+void Console::CreateNewFont() 
+{
 	// create a new font
 	if (m_hFontOld) ::SelectObject(m_hdcConsole, m_hFontOld);
 	if (m_hFont) ::DeleteObject(m_hFont);
 	
 	m_hFont = ::CreateFont(
-		-MulDiv(m_dwFontSize, ::GetDeviceCaps(m_hdcConsole, LOGPIXELSY), 72),
-		0,
-		0,
-		0,
-		m_bBold ? FW_BOLD : 0,
-		m_bItalic,
-		FALSE,
-		FALSE,
-		DEFAULT_CHARSET,						
-		OUT_DEFAULT_PRECIS,
-		CLIP_DEFAULT_PRECIS,
-		DEFAULT_QUALITY,
-		DEFAULT_PITCH,
-		m_strFontName.c_str());
+												 -MulDiv(m_dwFontSize, ::GetDeviceCaps(m_hdcConsole, LOGPIXELSY), 72),
+												 0,
+												 0,
+												 0,
+												 m_bBold ? FW_BOLD : 0,
+												 m_bItalic,
+												 FALSE,
+												 FALSE,
+												 DEFAULT_CHARSET,						
+												 OUT_DEFAULT_PRECIS,
+												 CLIP_DEFAULT_PRECIS,
+												 DEFAULT_QUALITY,
+												 DEFAULT_PITCH,
+												 m_strFontName.c_str());
 	
 	m_hFontOld = (HFONT)::SelectObject(m_hdcConsole, m_hFont);
 }
@@ -2011,8 +1447,8 @@ void Console::CreateNewFont() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::CreateNewBrush() {
-	
+void Console::CreateNewBrush() 
+{
 	// create a new background brush
 	if (m_hBkBrush) ::DeleteObject(m_hBkBrush);
 	m_hBkBrush = ::CreateSolidBrush(m_crBackground);
@@ -2023,9 +1459,11 @@ void Console::CreateNewBrush() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::CreateCursor() {
+void Console::CreateCursor() 
+{
 	
-	switch (m_dwCursorStyle) {
+	switch (m_dwCursorStyle) 
+		{
 		case CURSOR_STYLE_XTERM :
 			m_pCursor = (Cursor*)new XTermCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
 			break;
@@ -2073,326 +1511,8 @@ void Console::CreateCursor() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::CreateOffscreenBuffers() {
-	
-	HDC hdcDesktop = ::GetDCEx(m_hWnd, NULL, 0);
-	
-	// create new window bitmap
-	if (m_hbmpConsoleOld) ::SelectObject(m_hdcConsole, m_hbmpConsoleOld);
-	if (m_hbmpConsole) ::DeleteObject(m_hbmpConsole);
-	
-	m_hbmpConsole = ::CreateCompatibleBitmap(hdcDesktop, m_nClientWidth, m_nClientHeight);
-	m_hbmpConsoleOld = (HBITMAP)::SelectObject(m_hdcConsole, m_hbmpConsole);
-	
-	if (m_hbmpWindowOld) ::SelectObject(m_hdcWindow, m_hbmpWindowOld);
-	if (m_hbmpWindow) ::DeleteObject(m_hbmpWindow);
-	
-	m_hbmpWindow = ::CreateCompatibleBitmap(hdcDesktop, m_nClientWidth, m_nClientHeight);
-	m_hbmpWindowOld = (HBITMAP)::SelectObject(m_hdcWindow, m_hbmpWindow);
-	
-	// create selection bitmap
-	if (m_hbmpSelectionOld) ::SelectObject(m_hdcSelection, m_hbmpSelectionOld);
-	if (m_hbmpSelection) ::DeleteObject(m_hbmpSelection);
-	
-	m_hbmpSelection = ::CreateCompatibleBitmap(m_hdcWindow, m_nClientWidth, m_nClientHeight);
-	m_hbmpSelectionOld = (HBITMAP)::SelectObject(m_hdcSelection, m_hbmpSelection);
-	
-	RECT rect;
-	rect.left = 0;
-	rect.top = 0;
-	rect.right = m_nClientWidth;
-	rect.bottom = m_nClientHeight;
-	::FillRect(m_hdcSelection, &rect, m_hbrushSelection);
-	
-	::ReleaseDC(m_hWnd, hdcDesktop);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::CreateBackgroundBitmap() {
-	
-	USES_CONVERSION;
-	
-	if (m_hbmpBackgroundOld) ::SelectObject(m_hdcBackground, m_hbmpBackgroundOld);
-	if (m_hbmpBackground) ::DeleteObject(m_hbmpBackground);
-	if (m_hdcBackground) ::DeleteDC(m_hdcBackground);
-	
-	if (!m_bBitmapBackground) return;
-	
-	// determine the total size of the background bitmap
-	DWORD	dwPrimaryDisplayWidth	= ::GetSystemMetrics(SM_CXSCREEN);
-	DWORD	dwPrimaryDisplayHeight	= ::GetSystemMetrics(SM_CYSCREEN);
-	
-	DWORD	dwBackgroundWidth		= 0;
-	DWORD	dwBackgroundHeight		= 0;
-
-	if (m_bRelativeBackground) {
-
-		if (g_bWin2000) {
-			// Win2K and later can handle multiple monitors
-			dwBackgroundWidth	= ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
-			dwBackgroundHeight	= ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
-			
-			// get offsets for virtual display
-			m_nBackgroundOffsetX = ::GetSystemMetrics(SM_XVIRTUALSCREEN);
-			m_nBackgroundOffsetY = ::GetSystemMetrics(SM_YVIRTUALSCREEN);
-		} else {
-			// WinNT compatibility (hope it works, I didn't test it)
-			dwBackgroundWidth	= dwPrimaryDisplayWidth;
-			dwBackgroundHeight	= dwBackgroundHeight;
-		}
-		
-	} else {
-		dwBackgroundWidth	= m_nClientWidth;
-		dwBackgroundHeight	= m_nClientHeight;
-	}
-
-	// now, load the image...
-	fipImage	image;
-	IMAGE_DATA	imageData;
-
-	if (!image.load(T2A(m_strBackgroundFile.c_str()))) {
-		m_bBitmapBackground = FALSE;
-		return;
-	}
-	
-	imageData.hdcImage		= NULL;
-	imageData.dwImageWidth	= image.getWidth();
-	imageData.dwImageHeight = image.getHeight();
-
-	image.convertTo24Bits();
-	
-	// ... if needed, tint the background image
-	if (m_bTintSet) {
-		
-		BYTE*	pPixels = image.accessPixels();
-		BYTE*	pPixelsEnd =  pPixels + 3*image.getWidth()*image.getHeight();
-		BYTE*	pPixelSubel = pPixels;
-
-		while (pPixelSubel < pPixelsEnd) {
-
-			*pPixelSubel = (BYTE) ((unsigned long)(*pPixelSubel * (100 - m_byTintOpacity) + m_byTintB*m_byTintOpacity)/100); 
-			++pPixelSubel;
-			*pPixelSubel = (BYTE) ((unsigned long)(*pPixelSubel * (100 - m_byTintOpacity) + m_byTintG*m_byTintOpacity)/100);
-			++pPixelSubel;
-			*pPixelSubel = (BYTE) ((unsigned long)(*pPixelSubel * (100 - m_byTintOpacity) + m_byTintR*m_byTintOpacity)/100);
-			++pPixelSubel;
-		}
-	}		
-	
-	// create the basic image
-	HBITMAP		hbmpImage		= NULL;
-	HBITMAP		hbmpImageOld	= NULL;
-
-	if (m_dwBackgroundStyle == BACKGROUND_STYLE_RESIZE) {
-
-		if (m_bRelativeBackground) {
-			if (m_bExtendBackground) {
-				imageData.dwImageWidth	= dwBackgroundWidth;
-				imageData.dwImageHeight	= dwBackgroundHeight;
-			} else {
-				imageData.dwImageWidth	= dwPrimaryDisplayWidth;
-				imageData.dwImageHeight	= dwPrimaryDisplayHeight;
-			}
-		} else {
-			imageData.dwImageWidth	= (DWORD)m_nClientWidth;
-			imageData.dwImageHeight	= (DWORD)m_nClientHeight;
-		}
-
-		if ((image.getWidth() != imageData.dwImageWidth) || (image.getHeight() != imageData.dwImageHeight)) {
-			image.rescale(imageData.dwImageWidth, imageData.dwImageHeight, FILTER_LANCZOS3);
-		}
-	}
-	
-	
-	// now, create a DC compatible with the screen and create the basic bitmap
-	HDC hdcDesktop		= ::GetDCEx(m_hWnd, NULL, 0);
-	imageData.hdcImage	= ::CreateCompatibleDC(hdcDesktop);
-	hbmpImage			= ::CreateDIBitmap(
-								hdcDesktop, 
-								image.getInfoHeader(), 
-								CBM_INIT, 
-								image.accessPixels(), 
-								image.getInfo(), 
-								DIB_RGB_COLORS);
-	hbmpImageOld= (HBITMAP)::SelectObject(imageData.hdcImage, hbmpImage);
-	::ReleaseDC(m_hWnd, hdcDesktop);
-	
-	// create the background image
-	m_hdcBackground	= ::CreateCompatibleDC(imageData.hdcImage);
-	m_hbmpBackground = ::CreateCompatibleBitmap(imageData.hdcImage, dwBackgroundWidth, dwBackgroundHeight);
-	m_hbmpBackgroundOld = (HBITMAP)::SelectObject(m_hdcBackground, m_hbmpBackground);
-	
-	RECT rectBackground;
-	rectBackground.left		= 0;
-	rectBackground.top		= 0;
-	rectBackground.right	= dwBackgroundWidth;
-	rectBackground.bottom	= dwBackgroundHeight;
-	
-	// fill the background with the proper background color in case the 
-	// bitmap doesn't cover the entire background, 
-	COLORREF crBackground;
-
-	if (m_dwTransparency == TRANSPARENCY_FAKE) {
-		// get desktop background color
-		HKEY hkeyColors;
-		if (::RegOpenKeyEx(HKEY_CURRENT_USER, _T("Control Panel\\Colors"), 0, KEY_READ, &hkeyColors) == ERROR_SUCCESS) {
-			
-			TCHAR	szData[MAX_PATH];
-			DWORD	dwDataSize = MAX_PATH;
-			
-			BYTE	r = 0;
-			BYTE	g = 0;
-			BYTE	b = 0;
-			
-			::ZeroMemory(szData, sizeof(szData));
-			::RegQueryValueEx(hkeyColors, _T("Background"), NULL, NULL, (BYTE*)szData, &dwDataSize);
-			
-			_stscanf(szData, _T("%i %i %i"), &r, &g, &b);
-			crBackground = RGB(r, g, b);
-			
-			::RegCloseKey(hkeyColors);
-		}
-	} else {
-		::CopyMemory(&crBackground, &m_crBackground, sizeof(COLORREF));
-	}
-
-	HBRUSH hBkBrush = ::CreateSolidBrush(crBackground);
-	::FillRect(m_hdcBackground, &rectBackground, hBkBrush);
-	::DeleteObject(hBkBrush);
-	
-	if (m_dwBackgroundStyle == BACKGROUND_STYLE_TILE) {
-
-		// we're tiling the image, starting at coordinates (0, 0) of the virtual screen
-		DWORD dwX = 0;
-		DWORD dwY = 0;
-		
-		DWORD dwImageOffsetX = 0;
-		DWORD dwImageOffsetY = imageData.dwImageHeight + (m_nBackgroundOffsetY - (int)imageData.dwImageHeight*(m_nBackgroundOffsetY/(int)imageData.dwImageHeight));
-		
-		while (dwY < dwBackgroundHeight) {
-			
-			dwX				= 0;
-			dwImageOffsetX	= imageData.dwImageWidth + (m_nBackgroundOffsetX - (int)imageData.dwImageWidth*(m_nBackgroundOffsetX/(int)imageData.dwImageWidth));
-			
-			while (dwX < dwBackgroundWidth) {
-
-				::BitBlt(
-					m_hdcBackground, 
-					dwX, 
-					dwY, 
-					imageData.dwImageWidth, 
-					imageData.dwImageHeight,
-					imageData.hdcImage,
-					dwImageOffsetX,
-					dwImageOffsetY,
-					SRCCOPY);
-				
-				dwX += imageData.dwImageWidth - dwImageOffsetX;
-				dwImageOffsetX = 0;
-			}
-			
-			dwY += imageData.dwImageHeight - dwImageOffsetY;
-			dwImageOffsetY = 0;
-		}
-
-	} else if (m_bExtendBackground || !m_bRelativeBackground) {
-		
-		switch (m_dwBackgroundStyle) {
-			case BACKGROUND_STYLE_RESIZE :
-				::BitBlt(
-					m_hdcBackground, 
-					0,
-					0,
-					dwBackgroundWidth, 
-					dwBackgroundHeight,
-					imageData.hdcImage,
-					0,
-					0,
-					SRCCOPY);
-				break;
-				
-			case BACKGROUND_STYLE_CENTER :
-				::BitBlt(
-					m_hdcBackground, 
-					(dwBackgroundWidth <= imageData.dwImageWidth) ? 0 : (dwBackgroundWidth - imageData.dwImageWidth)/2,
-					(dwBackgroundHeight <= imageData.dwImageHeight) ? 0 : (dwBackgroundHeight - imageData.dwImageHeight)/2,
-					imageData.dwImageWidth, 
-					imageData.dwImageHeight,
-					imageData.hdcImage,
-					(dwBackgroundWidth < imageData.dwImageWidth) ? (imageData.dwImageWidth - dwBackgroundWidth)/2 : 0,
-					(dwBackgroundHeight < imageData.dwImageHeight) ? (imageData.dwImageHeight - dwBackgroundHeight)/2 : 0,
-					SRCCOPY);
-					break;
-		}
-	} else {
-		::EnumDisplayMonitors(NULL, NULL, Console::BackgroundEnumProc, (DWORD)&imageData);
-	}
-
-	::SelectObject(imageData.hdcImage, hbmpImageOld);
-	::DeleteObject(hbmpImage);
-	::DeleteDC(imageData.hdcImage);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-BOOL CALLBACK Console::BackgroundEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
-
-	IMAGE_DATA* pImageData = (IMAGE_DATA*)dwData;
-
-	DWORD	dwDisplayWidth	= lprcMonitor->right - lprcMonitor->left;
-	DWORD	dwDisplayHeight	= lprcMonitor->bottom - lprcMonitor->top;
-	
-	DWORD	dwPrimaryDisplayWidth	= ::GetSystemMetrics(SM_CXSCREEN);
-	DWORD	dwPrimaryDisplayHeight	= ::GetSystemMetrics(SM_CYSCREEN);
-	
-	// center the image according to current display's size and position
-	switch (g_pConsole->m_dwBackgroundStyle) {
-		
-		case BACKGROUND_STYLE_RESIZE :
-			::BitBlt(
-				g_pConsole->m_hdcBackground, 
-				(dwDisplayWidth <= dwPrimaryDisplayWidth) ? lprcMonitor->left-g_pConsole->m_nBackgroundOffsetX : lprcMonitor->left-g_pConsole->m_nBackgroundOffsetX + (dwDisplayWidth - dwPrimaryDisplayWidth)/2,
-				(dwDisplayHeight <= dwPrimaryDisplayHeight) ? lprcMonitor->top-g_pConsole->m_nBackgroundOffsetY : lprcMonitor->top-g_pConsole->m_nBackgroundOffsetY + (dwDisplayHeight - dwPrimaryDisplayHeight)/2,
-				dwDisplayWidth, 
-				dwDisplayHeight,
-				pImageData->hdcImage,
-				(dwDisplayWidth < dwPrimaryDisplayWidth) ? (dwPrimaryDisplayWidth - dwDisplayWidth)/2 : 0,
-				(dwDisplayHeight < dwPrimaryDisplayHeight) ? (dwPrimaryDisplayHeight - dwDisplayHeight)/2 : 0,
-				SRCCOPY);
-			
-			break;
-			
-		case BACKGROUND_STYLE_CENTER :
-			::BitBlt(
-				g_pConsole->m_hdcBackground, 
-				(dwDisplayWidth <= pImageData->dwImageWidth) ? lprcMonitor->left-g_pConsole->m_nBackgroundOffsetX : lprcMonitor->left-g_pConsole->m_nBackgroundOffsetX + (dwDisplayWidth - pImageData->dwImageWidth)/2,
-				(dwDisplayHeight <= pImageData->dwImageHeight) ? lprcMonitor->top-g_pConsole->m_nBackgroundOffsetY : lprcMonitor->top-g_pConsole->m_nBackgroundOffsetY + (dwDisplayHeight - pImageData->dwImageHeight)/2,
-				dwDisplayWidth, 
-				dwDisplayHeight,
-				pImageData->hdcImage,
-				(dwDisplayWidth < pImageData->dwImageWidth) ? (pImageData->dwImageWidth - dwDisplayWidth)/2 : 0,
-				(dwDisplayHeight < pImageData->dwImageHeight) ? (pImageData->dwImageHeight - dwDisplayHeight)/2 : 0,
-				SRCCOPY);
-			
-			break;
-	}
-
-	return TRUE;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::CalcWindowSize() {
+void Console::CalcWindowSize() 
+{
 	
 	TEXTMETRIC	textMetric;
 	::GetTextMetrics(m_hdcConsole, &textMetric);
@@ -2400,16 +1520,19 @@ void Console::CalcWindowSize() {
 	m_nCharHeight	= textMetric.tmHeight;
 	m_nClientHeight	= m_dwRows * m_nCharHeight + 2*m_nInsideBorder;
 	
-	if (!(textMetric.tmPitchAndFamily & TMPF_FIXED_PITCH)) {
-		// fixed pitch font (TMPF_FIXED_PITCH is cleared!!!)
-		m_nCharWidth= textMetric.tmAveCharWidth;
-		m_nClientWidth	= m_dwColumns * m_nCharWidth + 2*m_nInsideBorder;
-	} else {
-		// variable pitch font
-		int nCharWidth;
-		::GetCharWidth32(m_hdcConsole, _TCHAR('m'), _TCHAR('m'), &nCharWidth);
-		m_nClientWidth	= m_dwColumns * nCharWidth;
-	}
+	if (!(textMetric.tmPitchAndFamily & TMPF_FIXED_PITCH)) 
+		{
+			// fixed pitch font (TMPF_FIXED_PITCH is cleared!!!)
+			m_nCharWidth= textMetric.tmAveCharWidth;
+			m_nClientWidth	= m_dwColumns * m_nCharWidth + 2*m_nInsideBorder;
+		} 
+	else 
+		{
+			// variable pitch font
+			int nCharWidth;
+			::GetCharWidth32(m_hdcConsole, _TCHAR('m'), _TCHAR('m'), &nCharWidth);
+			m_nClientWidth	= m_dwColumns * nCharWidth;
+		}
 	
 	WINDOWINFO wndInfo;
 	TITLEBARINFO titlebarInfo;
@@ -2425,31 +1548,34 @@ void Console::CalcWindowSize() {
 	
 	m_nXBorderSize = wndInfo.cxWindowBorders;
 	m_nYBorderSize = wndInfo.cyWindowBorders;
-	m_nCaptionSize = (titlebarInfo.rgstate[0] & STATE_SYSTEM_INVISIBLE) ? 0 : titlebarInfo.rcTitleBar.bottom - titlebarInfo.rcTitleBar.top;
+	m_nCaptionSize = (titlebarInfo.rgstate[0] & STATE_SYSTEM_INVISIBLE) ? 
+		0 : titlebarInfo.rcTitleBar.bottom - titlebarInfo.rcTitleBar.top;
 	
-	switch (m_dwWindowBorder) {
+	switch (m_dwWindowBorder) 
+		{
 		case BORDER_NONE :
 			m_nWindowHeight	= m_nClientHeight;
 			m_nWindowWidth	= m_nClientWidth;
 			break;
 			
-		case BORDER_REGULAR : {
-			
-			TRACE(_T("m_nXBorderSize: %i\n"), m_nXBorderSize);
-			TRACE(_T("m_nYBorderSize: %i\n"), m_nYBorderSize);
-			TRACE(_T("m_nCaptionSize: %i\n"), m_nCaptionSize);
-			
-			m_nWindowHeight	= m_nClientHeight + m_nCaptionSize + 2*m_nYBorderSize;
-			m_nWindowWidth	= m_nClientWidth + 2 * m_nXBorderSize;
-			
-			break;
-							  }
+		case BORDER_REGULAR : 
+			{
+				
+				TRACE(_T("m_nXBorderSize: %i\n"), m_nXBorderSize);
+				TRACE(_T("m_nYBorderSize: %i\n"), m_nYBorderSize);
+				TRACE(_T("m_nCaptionSize: %i\n"), m_nCaptionSize);
+				
+				m_nWindowHeight	= m_nClientHeight + m_nCaptionSize + 2*m_nYBorderSize;
+				m_nWindowWidth	= m_nClientWidth + 2 * m_nXBorderSize;
+				
+				break;
+			}
 			
 		case BORDER_THIN :
 			
 			m_nWindowHeight	= m_nClientHeight + 2*m_nYBorderSize;
 			m_nWindowWidth	= m_nClientWidth + 2*m_nXBorderSize;
-	}
+		}
 	
 	if (m_bShowScrollbar) m_nWindowWidth += m_nScrollbarWidth;
 }
@@ -2459,61 +1585,78 @@ void Console::CalcWindowSize() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::SetWindowTransparency() {
+void Console::SetWindowTransparency() 
+{
 	
 	// set alpha transparency (Win2000 and later only!)
-	if (g_bWin2000 && ((m_dwTransparency == TRANSPARENCY_ALPHA) || (m_dwTransparency == TRANSPARENCY_COLORKEY))) {
-		
-		::SetWindowLong(m_hWnd, GWL_EXSTYLE, ::GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-		g_pfnSetLayeredWndAttr(m_hWnd, m_crBackground, m_byAlpha, m_dwTransparency == TRANSPARENCY_ALPHA ? LWA_ALPHA : LWA_COLORKEY);
-		
-	} else if (m_dwTransparency == TRANSPARENCY_FAKE) {
-		// get wallpaper settings
-		HKEY hkeyDesktop;
-		if (::RegOpenKeyEx(HKEY_CURRENT_USER, _T("Control Panel\\Desktop"), 0, KEY_READ, &hkeyDesktop) == ERROR_SUCCESS) {
-			TCHAR	szData[MAX_PATH];
-			DWORD	dwDataSize = MAX_PATH;
-
-			DWORD	dwWallpaperStyle;
-			DWORD	dwTileWallpaper;
-
-			::ZeroMemory(szData, sizeof(szData));
-			::RegQueryValueEx(hkeyDesktop, _T("Wallpaper"), NULL, NULL, (BYTE*)szData, &dwDataSize);
+	if (g_bWin2000 && ((m_dwTransparency == TRANSPARENCY_ALPHA) 
+										 || (m_dwTransparency == TRANSPARENCY_COLORKEY))) 
+		{
 			
-			if (_tcslen(szData) > 0) {
-				m_bBitmapBackground = TRUE;
-				m_strBackgroundFile		= szData;
-				m_bRelativeBackground	= TRUE;
-				m_bExtendBackground		= FALSE;
-				
-				// get wallpaper style and tile flag
-				dwDataSize = MAX_PATH;
-				::ZeroMemory(szData, sizeof(szData));
-				::RegQueryValueEx(hkeyDesktop, _T("WallpaperStyle"), NULL, NULL, (BYTE*)szData, &dwDataSize);
-
-				dwWallpaperStyle = _ttoi(szData);
-
-				dwDataSize = MAX_PATH;
-				::ZeroMemory(szData, sizeof(szData));
-				::RegQueryValueEx(hkeyDesktop, _T("TileWallpaper"), NULL, NULL, (BYTE*)szData, &dwDataSize);
-				
-				dwTileWallpaper = _ttoi(szData);
-
-				if (dwTileWallpaper == 1) {
-					m_dwBackgroundStyle = BACKGROUND_STYLE_TILE;
-				} else {
-
-					if (dwWallpaperStyle == 0) {
-						m_dwBackgroundStyle = BACKGROUND_STYLE_CENTER;
-					} else {
-						m_dwBackgroundStyle = BACKGROUND_STYLE_RESIZE;
-					}
+			::SetWindowLong(m_hWnd, GWL_EXSTYLE, ::GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+			g_pfnSetLayeredWndAttr(m_hWnd, m_crBackground, m_byAlpha, 
+														 m_dwTransparency == TRANSPARENCY_ALPHA ? LWA_ALPHA : LWA_COLORKEY);
+			
+		} 
+	else if (m_dwTransparency == TRANSPARENCY_FAKE) 
+		{
+			// get wallpaper settings
+			HKEY hkeyDesktop;
+			if (::RegOpenKeyEx(HKEY_CURRENT_USER, _T("Control Panel\\Desktop"), 0, 
+												 KEY_READ, &hkeyDesktop) == ERROR_SUCCESS) 
+				{
+					TCHAR	szData[MAX_PATH];
+					DWORD	dwDataSize = MAX_PATH;
+					
+					DWORD	dwWallpaperStyle;
+					DWORD	dwTileWallpaper;
+					
+					::ZeroMemory(szData, sizeof(szData));
+					::RegQueryValueEx(hkeyDesktop, _T("Wallpaper"), NULL, NULL, (BYTE*)szData, &dwDataSize);
+			
+					if (_tcslen(szData) > 0) 
+						{
+							m_bBitmapBackground = TRUE;
+							m_strBackgroundFile		= szData;
+							m_bRelativeBackground	= TRUE;
+							m_bExtendBackground		= FALSE;
+							
+							// get wallpaper style and tile flag
+							dwDataSize = MAX_PATH;
+							::ZeroMemory(szData, sizeof(szData));
+							::RegQueryValueEx(hkeyDesktop, _T("WallpaperStyle"), NULL, NULL, 
+																(BYTE*)szData, &dwDataSize);
+							
+							dwWallpaperStyle = _ttoi(szData);
+							
+							dwDataSize = MAX_PATH;
+							::ZeroMemory(szData, sizeof(szData));
+							::RegQueryValueEx(hkeyDesktop, _T("TileWallpaper"), NULL, NULL, 
+																(BYTE*)szData, &dwDataSize);
+							
+							dwTileWallpaper = _ttoi(szData);
+							
+							if (dwTileWallpaper == 1) 
+								{
+									m_dwBackgroundStyle = BACKGROUND_STYLE_TILE;
+								}
+							else
+								{
+									
+									if (dwWallpaperStyle == 0) 
+										{
+											m_dwBackgroundStyle = BACKGROUND_STYLE_CENTER;
+										} 
+									else 
+										{
+											m_dwBackgroundStyle = BACKGROUND_STYLE_RESIZE;
+										}
+								}
+						}
+					
+					::RegCloseKey(hkeyDesktop);
 				}
-			}
-			
-			::RegCloseKey(hkeyDesktop);
 		}
-	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2521,13 +1664,17 @@ void Console::SetWindowTransparency() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::SetScrollbarStuff() {
-
-	if (m_bUseTextBuffer) {
-		m_bShowScrollbar = m_dwBufferRows > m_dwRows;
-	} else {
-		m_bShowScrollbar = FALSE;
-	}
+void Console::SetScrollbarStuff()
+{
+	
+	if (m_bUseTextBuffer)
+		{
+			m_bShowScrollbar = m_dwBufferRows > m_dwRows;
+		} 
+	else 
+		{
+			m_bShowScrollbar = FALSE;
+		}
 	
 	// we don't call InitializeFlatSB due to some problems on Win2k, Windowblinds and new-style scrollbars
 	if (m_nScrollbarStyle != FSB_REGULAR_MODE) ::InitializeFlatSB(m_hWnd);
@@ -2547,7 +1694,8 @@ void Console::SetScrollbarStuff() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::SetDefaultConsoleColors() {
+void Console::SetDefaultConsoleColors() 
+{
 	
 	m_arrConsoleColors[0]	= 0x000000;
 	m_arrConsoleColors[1]	= 0x800000;
@@ -2572,7 +1720,8 @@ void Console::SetDefaultConsoleColors() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::SetWindowSizeAndPosition() {
+void Console::SetWindowSizeAndPosition() 
+{
 	
 	// set window position
 	DWORD   dwScreenWidth	= ::GetSystemMetrics(g_bWin2000 ? SM_CXVIRTUALSCREEN : SM_CXSCREEN);
@@ -2580,47 +1729,49 @@ void Console::SetWindowSizeAndPosition() {
 	DWORD   dwTop			= ::GetSystemMetrics(g_bWin2000 ? SM_YVIRTUALSCREEN : 0);
 	DWORD   dwLeft			= ::GetSystemMetrics(g_bWin2000 ? SM_XVIRTUALSCREEN : 0);
 	
-	switch (m_dwDocked) {
-	case DOCK_TOP_LEFT:
-		// top left
-		m_nX = dwLeft;
-		m_nY = dwTop;
-		break;
-		
-	case DOCK_TOP_RIGHT:
-		// top right
-		m_nX = dwScreenWidth - m_nWindowWidth;
-		m_nY = dwTop;
-		break;
-		
-	case DOCK_BOTTOM_RIGHT:
-		// bottom right
-		m_nX = dwScreenWidth - m_nWindowWidth;
-		m_nY = dwScreenHeight - m_nWindowHeight;
-		break;
-		
-	case DOCK_BOTTOM_LEFT:
-		// bottom left
-		m_nX = dwLeft;
-		m_nY = dwScreenHeight - m_nWindowHeight;
-		break;
-	}
+	switch (m_dwDocked) 
+		{
+		case DOCK_TOP_LEFT:
+			// top left
+			m_nX = dwLeft;
+			m_nY = dwTop;
+			break;
+			
+		case DOCK_TOP_RIGHT:
+			// top right
+			m_nX = dwScreenWidth - m_nWindowWidth;
+			m_nY = dwTop;
+			break;
+			
+		case DOCK_BOTTOM_RIGHT:
+			// bottom right
+			m_nX = dwScreenWidth - m_nWindowWidth;
+			m_nY = dwScreenHeight - m_nWindowHeight;
+			break;
+			
+		case DOCK_BOTTOM_LEFT:
+			// bottom left
+			m_nX = dwLeft;
+			m_nY = dwScreenHeight - m_nWindowHeight;
+			break;
+		}
 	
 	HWND hwndZ;
-	switch (m_dwCurrentZOrder) {
-	case Z_ORDER_REGULAR	: hwndZ = HWND_NOTOPMOST; break;
-	case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
-	case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
-	}
+	switch (m_dwCurrentZOrder) 
+		{
+		case Z_ORDER_REGULAR	: hwndZ = HWND_NOTOPMOST; break;
+		case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
+		case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
+		}
 	
 	::SetWindowPos(
-		m_hWnd, 
-		hwndZ, 
-		m_nX, 
-		m_nY, 
-		m_nWindowWidth, 
-		m_nWindowHeight, 
-		0);
+								 m_hWnd, 
+								 hwndZ, 
+								 m_nX, 
+								 m_nY, 
+								 m_nWindowWidth, 
+								 m_nWindowHeight, 
+								 0);
 	
 	UpdateOnTopMenuItem();
 }
@@ -2630,68 +1781,8 @@ void Console::SetWindowSizeAndPosition() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::SetWindowIcons() {
-	
-	HICON hOldIcon	= NULL;
-	
-	if (m_strIconFilename.length() > 0) {
-
-		// custom icon, try loading it...
-		if ((m_hSmallIcon = (HICON)::LoadImage(NULL, m_strIconFilename.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE)) != NULL) {
-
-			// icon file exists, load and set the big icon as well
-			m_hBigIcon = (HICON)::LoadImage(NULL, m_strIconFilename.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
-			hOldIcon = (HICON)::SendMessage(m_hWnd, WM_SETICON, ICON_BIG, (LPARAM)m_hBigIcon);
-			if (hOldIcon) ::DestroyIcon(hOldIcon);
-			
-		} else {
-			m_hSmallIcon = (HICON)::LoadImage(g_hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 16, 16, 0);
-		}
-
-	} else {
-		m_hSmallIcon = (HICON)::LoadImage(g_hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 16, 16, 0);
-	}
-
-	hOldIcon = (HICON)::SendMessage(m_hWnd, WM_SETICON, ICON_SMALL, (LPARAM)m_hSmallIcon);
-	if (hOldIcon) ::DestroyIcon(hOldIcon);
-	
-	SetTrayIcon(m_dwTaskbarButton == TASKBAR_BUTTON_TRAY ? NIM_ADD : NIM_DELETE);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-BOOL Console::SetTrayIcon(DWORD dwMessage) {
-	
-	NOTIFYICONDATA tnd;
-	tstring	strToolTip(m_strWindowTitle);
-	
-	tnd.cbSize				= sizeof(NOTIFYICONDATA);
-	tnd.hWnd				= m_hWnd;
-	tnd.uID					= TRAY_ICON_ID;
-	tnd.uFlags				= NIF_MESSAGE|NIF_ICON|NIF_TIP;
-	tnd.uCallbackMessage	= WM_TRAY_NOTIFY;
-	tnd.hIcon				= m_hSmallIcon;
-	
-	if (strToolTip.length() > 63) {
-		strToolTip.resize(59);
-		strToolTip += _T(" ...");
-		DWORD dw = strToolTip.length();
-	}
-	
-	_tcscpy(tnd.szTip, strToolTip.c_str());
-	return ::Shell_NotifyIcon(dwMessage, &tnd);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::DestroyCursor() {
-	
+void Console::DestroyCursor() 
+{
 	if (m_pCursor) DEL_OBJ(m_pCursor);
 }
 
@@ -2700,208 +1791,29 @@ void Console::DestroyCursor() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::EditConfigFile() {
-
-	// prepare editor parameters
-	tstring strParams(m_strConfigEditorParams);
-
-	if (strParams.length() == 0) {
-		// no params, just use the config file
-		strParams = m_strConfigFile;
-	} else {
-		int nPos = strParams.find(_T("%f"));
-
-		if (nPos == tstring::npos) {
-			// no '%f' in editor params, concatenate config file name
-			strParams += _T(" ");
-			strParams += m_strConfigFile;
-		} else {
-			// replace '%f' with config file name
-			strParams = strParams.replace(nPos, 2, m_strConfigFile);
-		}
-	}
-
-	// start editor
-	::ShellExecute(NULL, NULL, m_strConfigEditor.c_str(), strParams.c_str(), NULL, SW_SHOWNORMAL);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::ReloadSettings() {
-
-	m_bInitializing = TRUE;
-	m_bReloading	= TRUE;
-
-	// suspend console monitor thread
-	::SuspendThread(m_hMonitorThread);
-	::KillTimer(m_hWnd, TIMER_REPAINT_CHANGE);
-	if (m_dwMasterRepaintInt) ::KillTimer(m_hWnd, TIMER_REPAINT_MASTER);
-
-	// hide Windows console
-	::ShowWindow(m_hWndConsole, SW_HIDE);
-
-	// destroy icons
-	SetTrayIcon(NIM_DELETE);
-	if (m_hSmallIcon) ::DestroyIcon(m_hSmallIcon);
-	if (m_hBigIcon) ::DestroyIcon(m_hBigIcon);
-
-	// destroy cursor
-	DestroyCursor();
-
-	// destory menus
-	::DestroyMenu(m_hConfigFilesMenu);
-	::DestroyMenu(m_hPopupMenu);
+BOOL Console::StartShellProcess() 
+{
 	
-	// uninitialize flat scrollbars
-	if (m_nScrollbarStyle != FSB_REGULAR_MODE) ::UninitializeFlatSB(m_hWnd);
-
-	// destory window
-	::DestroyWindow(m_hWnd);
-	if (m_hwndInvisParent) ::DestroyWindow(m_hwndInvisParent);
-	
-	// set default values
-	m_strShell				= _T("");
-	m_strConfigEditor		= _T("notepad.exe");
-	m_strConfigEditorParams	= _T("");
-	m_dwReloadNewConfig		= m_dwReloadNewConfigDefault;
-	m_hwndInvisParent		= NULL;
-	m_dwMasterRepaintInt	= 500;
-	m_dwChangeRepaintInt	= 50;
-	m_strIconFilename		= _T("");
-	m_hSmallIcon			= NULL;
-	m_hBigIcon				= NULL;
-	m_hPopupMenu			= NULL;
-	m_hConfigFilesMenu		= NULL;
-	m_bPopupMenuDisabled	= FALSE;
-	m_strWindowTitle		= m_strWindowTitleDefault;
-	m_strWindowTitleCurrent	= m_strWindowTitleDefault;
-	m_strFontName			= _T("Lucida Console");
-	m_dwFontSize			= 8;
-	m_bBold					= FALSE;
-	m_bItalic				= FALSE;
-	m_bUseFontColor			= FALSE;
-	m_crFontColor			= RGB(0, 0, 0);
-//	m_nX					= 0;
-//	m_nY					= 0;
-	m_nWindowWidth			= 0;
-	m_nWindowHeight			= 0;
-	m_nXBorderSize			= 0;
-	m_nYBorderSize			= 0;
-	m_nCaptionSize			= 0;
-	m_nClientWidth			= 0;
-	m_nClientHeight			= 0;
-	m_nCharHeight			= 0;
-	m_nCharWidth			= 0;
-	m_dwWindowBorder		= BORDER_NONE;
-	m_bShowScrollbar		= FALSE;
-	m_nScrollbarStyle		= FSB_REGULAR_MODE;
-	m_crScrollbarColor		= ::GetSysColor(COLOR_3DHILIGHT);
-	m_nScrollbarWidth		= ::GetSystemMetrics(SM_CXVSCROLL);
-	m_nScrollbarButtonHeight= ::GetSystemMetrics(SM_CYVSCROLL);
-	m_nScrollbarThunmbHeight= ::GetSystemMetrics(SM_CYVTHUMB);
-	m_dwTaskbarButton		= TASKBAR_BUTTON_NORMAL;
-	m_bMouseDragable		= TRUE;
-	m_nSnapDst				= 10;
-	m_dwDocked				= DOCK_NONE;
-	m_dwOriginalZOrder		= Z_ORDER_REGULAR;
-	m_dwCurrentZOrder		= Z_ORDER_REGULAR;
-	m_dwTransparency		= TRANSPARENCY_NONE;
-	m_byAlpha				= 150;
-	m_byInactiveAlpha		= 150;
-	m_bBkColorSet			= FALSE;
-	m_crBackground			= RGB(0, 0, 0);
-	m_bTintSet				= FALSE;
-	m_byTintOpacity			= 50;
-	m_byTintR				= 0;
-	m_byTintG				= 0;
-	m_byTintB				= 0;
-	m_bBitmapBackground		= FALSE;
-	m_strBackgroundFile		= _T("");
-	m_dwBackgroundStyle		= BACKGROUND_STYLE_RESIZE;
-	m_bRelativeBackground	= FALSE;
-	m_bExtendBackground		= FALSE;
-	m_bHideWindow			= FALSE;
-	m_bHideConsole			= TRUE;
-	m_dwCursorStyle			= CURSOR_STYLE_CONSOLE;
-	m_bStartMinimized		= FALSE;
-	m_crCursorColor			= RGB(255, 255, 255);
-	m_bCursorVisible		= FALSE;
-	m_dwRows				= 25;
-	m_dwColumns				= 80;
-	m_dwBufferRows			= 25;
-	m_bUseTextBuffer		= FALSE;
-	m_bCopyOnSelect			= FALSE;
-
-	SetDefaultConsoleColors();
-
-	GetOptions();
-
-	CreateConsoleWindow();
-
-	SetupMenus();
-
-	CreateNewFont();
-	CreateNewBrush();
-	
-	SetWindowTransparency();
-	SetWindowIcons();
-	
-	CreateCursor();
-
-	RefreshStdOut();
-	InitConsoleWndSize(m_dwColumns);
-	ResizeConsoleWindow();
-	ShowHideConsole();
-	
-	m_bInitializing = FALSE;
-	m_bReloading	= FALSE;
-
-	RefreshScreenBuffer();
-	::CopyMemory(m_pScreenBuffer, m_pScreenBufferNew, sizeof(CHAR_INFO) * m_dwRows * m_dwColumns);
-	RepaintWindow();
-
-	if (m_dwMasterRepaintInt) ::SetTimer(m_hWnd, TIMER_REPAINT_MASTER, m_dwMasterRepaintInt, NULL);
-	
-	::ResumeThread(m_hMonitorThread);
-
-	if (m_bStartMinimized) {
-		if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) {
-			m_bHideWindow = TRUE;
-		} else {
-			::ShowWindow(m_hWnd, SW_MINIMIZE);
-		}
-	} else {
-		::ShowWindow(m_hWnd, SW_SHOW);
-	}
-	
-	::SetForegroundWindow(m_hWnd);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-BOOL Console::StartShellProcess() {
-	
-	if (m_strShell.length() == 0) {
-		TCHAR	szComspec[MAX_PATH];
+	if (m_strShell.length() == 0) 
+		{
+			TCHAR	szComspec[MAX_PATH];
 		
-		if (::GetEnvironmentVariable(_T("COMSPEC"), szComspec, MAX_PATH) > 0) {
-			m_strShell = szComspec;		
-		} else {
-			m_strShell = _T("cmd.exe");
+			if (::GetEnvironmentVariable(_T("COMSPEC"), szComspec, MAX_PATH) > 0) 
+				{
+					m_strShell = szComspec;		
+				} 
+			else
+				{
+					m_strShell = _T("cmd.exe");
+				}
 		}
-	}
 
 	tstring	strShellCmdLine(m_strShell);
-	if (m_strShellCmdLine.length() > 0) {
-		strShellCmdLine += _T(" ");
-		strShellCmdLine += m_strShellCmdLine;
-	}
+	if (m_strShellCmdLine.length() > 0) 
+		{
+			strShellCmdLine += _T(" ");
+			strShellCmdLine += m_strShellCmdLine;
+		}
 
 //	strShellCmdLine = "cmd.exe";
 	
@@ -2929,26 +1841,29 @@ BOOL Console::StartShellProcess() {
 	si.cb = sizeof(STARTUPINFO);
 	
 	if (!::CreateProcess(
-		NULL, 
-		(TCHAR*)strShellCmdLine.c_str(), 
-		NULL, 
-		NULL, 
-		TRUE, 
-		0, 
-		NULL,
-		NULL,
-		&si,
-		&pi)) {
-		
-		return FALSE;
-	}
-
-	if (m_dwHideConsoleTimeout > 0) {
-		::ShowWindow(m_hWndConsole, SW_MINIMIZE);
-		::SetTimer(m_hWnd, TIMER_SHOW_HIDE_CONSOLE, m_dwHideConsoleTimeout, NULL);
-	} else {
-		ShowHideConsole();
-	}
+											 NULL, 
+											 (TCHAR*)strShellCmdLine.c_str(), 
+											 NULL, 
+											 NULL, 
+											 TRUE, 
+											 0, 
+											 NULL,
+											 NULL,
+											 &si,
+											 &pi)) 
+		{
+			return FALSE;
+		}
+	
+	if (m_dwHideConsoleTimeout > 0) 
+		{
+			::ShowWindow(m_hWndConsole, SW_MINIMIZE);
+			::SetTimer(m_hWnd, TIMER_SHOW_HIDE_CONSOLE, m_dwHideConsoleTimeout, NULL);
+		} 
+	else 
+		{
+			ShowHideConsole();
+		}
 	
 	// close main thread handle
 	::CloseHandle(pi.hThread);
@@ -2959,7 +1874,8 @@ BOOL Console::StartShellProcess() {
 	
 	// create exit monitor thread
 	DWORD dwThreadID;
-	m_hMonitorThread = ::CreateThread(NULL, 0, Console::MonitorThreadStatic, this, CREATE_SUSPENDED, &dwThreadID);
+	m_hMonitorThread = ::CreateThread(NULL, 0, Console::MonitorThreadStatic, this, 
+																		CREATE_SUSPENDED, &dwThreadID);
 	
 	return TRUE;
 }
@@ -2969,10 +1885,12 @@ BOOL Console::StartShellProcess() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::RefreshStdOut() {
-	
+void Console::RefreshStdOut() 
+{
 	if (m_hStdOutFresh) ::CloseHandle(m_hStdOutFresh);
-	m_hStdOutFresh = ::CreateFile(_T("CONOUT$"), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
+	m_hStdOutFresh = ::CreateFile(_T("CONOUT$"), 
+																GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 
+																NULL, OPEN_EXISTING, 0, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2980,8 +1898,8 @@ void Console::RefreshStdOut() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::RefreshScreenBuffer() {
-	
+void Console::RefreshScreenBuffer() 
+{
 	// if we're initializing, do nothing
 	if (m_bInitializing) return;
 	
@@ -2993,12 +1911,15 @@ void Console::RefreshScreenBuffer() {
 	si.nPos   = (int)m_csbiConsole.srWindow.Top;
 	::FlatSB_SetScrollInfo(m_hWnd, SB_VERT, &si, TRUE);
 	
-	if ((m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1 != m_dwColumns) || (m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1 != m_dwRows) || (m_csbiConsole.dwSize.Y != m_dwBufferRows)) {
-		m_dwColumns = m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1;
-		m_dwRows	= m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1;
-		ResizeConsoleWindow();
-	}
-
+	if ((m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1 != m_dwColumns) 
+			|| (m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1 != m_dwRows) 
+			|| (m_csbiConsole.dwSize.Y != m_dwBufferRows)) 
+		{
+			m_dwColumns = m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1;
+			m_dwRows	= m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1;
+			ResizeConsoleWindow();
+		}
+	
 	COORD		coordBufferSize;
 	COORD		coordStart;
 	SMALL_RECT	srRegion;
@@ -3006,13 +1927,13 @@ void Console::RefreshScreenBuffer() {
 	coordStart.X		= 0;
 	coordStart.Y		= 0;
 	
-	coordBufferSize.X	= m_dwColumns;
-	coordBufferSize.Y	= m_dwRows;
+	coordBufferSize.X	= (short)m_dwColumns;
+	coordBufferSize.Y	= (short)m_dwRows;
 	
 	srRegion.Top		= m_csbiConsole.srWindow.Top;
 	srRegion.Left		= 0;
-	srRegion.Bottom		= m_csbiConsole.srWindow.Top + m_dwRows - 1;
-	srRegion.Right		= m_dwColumns - 1;
+	srRegion.Bottom		= (short)(m_csbiConsole.srWindow.Top + m_dwRows - 1);
+	srRegion.Right		= (short)(m_dwColumns - 1);
 
 	DEL_ARR(m_pScreenBufferNew);
 	m_pScreenBufferNew = new CHAR_INFO[m_dwRows * m_dwColumns];
@@ -3029,33 +1950,44 @@ void Console::RefreshScreenBuffer() {
 	// Here we decide about updating Console window title.
 	// There are 2 possibilities:
 
-	if (m_strWinConsoleTitle.compare(0, m_strWinConsoleTitle.length(), strWinConsoleTitle, 0, m_strWinConsoleTitle.length()) == 0) {
-		// 1. Windows console title starts with the original title, just see if
-		//    windows titles differ, and if they do, update it.
-		if ((m_strWindowTitle.length() == 0)  &&
-			(strWinConsoleTitle[m_strWinConsoleTitle.length()] == ' ') &&
-			(strWinConsoleTitle[m_strWinConsoleTitle.length()+1] == '-')) {
-
-			strConsoleTitle = strWinConsoleTitle.substr(m_strWinConsoleTitle.length()+3);
-		} else {
-			strConsoleTitle = m_strWindowTitle + strWinConsoleTitle.substr(m_strWinConsoleTitle.length());
+	if (m_strWinConsoleTitle.compare(0, m_strWinConsoleTitle.length(), 
+																	 strWinConsoleTitle, 0, m_strWinConsoleTitle.length()) == 0) 
+		{
+			// 1. Windows console title starts with the original title, just see if
+			//    windows titles differ, and if they do, update it.
+			if ((m_strWindowTitle.length() == 0)  &&
+					(strWinConsoleTitle[m_strWinConsoleTitle.length()] == ' ') &&
+			(strWinConsoleTitle[m_strWinConsoleTitle.length()+1] == '-')) 
+				{
+					strConsoleTitle = strWinConsoleTitle.substr(m_strWinConsoleTitle.length()+3);
+				} 
+			else 
+				{
+					strConsoleTitle = 
+						m_strWindowTitle + strWinConsoleTitle.substr(m_strWinConsoleTitle.length());
+				}
+			
+		} 
+	else 
+		{
+			// 2. Windows console title is completely changed. To set Console title, 
+			//    we need to get Windows console title and concatenate it to our 
+			//    original Console title (if it changed since the last update)
+			if (m_strWindowTitle.length() == 0) 
+				{
+					strConsoleTitle = strWinConsoleTitle;
+				} 
+			else 
+				{
+					strConsoleTitle = m_strWindowTitle + tstring(_T(" - ")) + strWinConsoleTitle;
+				}
 		}
-
-	} else {
-		// 2. Windows console title is completely changed. To set Console title, 
-		//    we need to get Windows console title and concatenate it to our 
-		//    original Console title (if it changed since the last update)
-		if (m_strWindowTitle.length() == 0) {
-			strConsoleTitle = strWinConsoleTitle;
-		} else {
-			strConsoleTitle = m_strWindowTitle + tstring(_T(" - ")) + strWinConsoleTitle;
+	
+	if (m_strWindowTitleCurrent.compare(strConsoleTitle) != 0) 
+		{
+			m_strWindowTitleCurrent = strConsoleTitle;
+			::SetWindowText(m_hWnd, m_strWindowTitleCurrent.c_str());
 		}
-	}
-
-	if (m_strWindowTitleCurrent.compare(strConsoleTitle) != 0) {
-		m_strWindowTitleCurrent = strConsoleTitle;
-		::SetWindowText(m_hWnd, m_strWindowTitleCurrent.c_str());
-	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -3063,7 +1995,8 @@ void Console::RefreshScreenBuffer() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::InitConsoleWndSize(DWORD dwColumns) {
+void Console::InitConsoleWndSize(DWORD dwColumns) 
+{
 	
 	if (m_nTextSelection) ClearSelection();
 	
@@ -3073,19 +2006,24 @@ void Console::InitConsoleWndSize(DWORD dwColumns) {
 	
 	SMALL_RECT	srConsoleRect;
 	srConsoleRect.Top	= srConsoleRect.Left =0;
-	srConsoleRect.Right	= dwColumns - 1;
-	srConsoleRect.Bottom= m_dwRows - 1;
+	srConsoleRect.Right	= (short)(dwColumns - 1);
+	srConsoleRect.Bottom= (short)(m_dwRows - 1);
 	
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	::GetConsoleScreenBufferInfo(m_hStdOutFresh, &csbi);
 	
-	if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y > (DWORD) dwColumns * m_dwBufferRows) {
-		::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
-		::SetConsoleScreenBufferSize(m_hStdOutFresh, coordConsoleSize);
-	} else if (((DWORD)csbi.dwSize.X < dwColumns) || ((DWORD)csbi.dwSize.Y < m_dwBufferRows) || ((DWORD)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1) != m_dwRows)) {
-		::SetConsoleScreenBufferSize(m_hStdOutFresh, coordConsoleSize);
-		::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
-	}
+	if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y > (DWORD) dwColumns * m_dwBufferRows) 
+		{
+			::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
+			::SetConsoleScreenBufferSize(m_hStdOutFresh, coordConsoleSize);
+		} 
+	else if (((DWORD)csbi.dwSize.X < dwColumns) 
+					 || ((DWORD)csbi.dwSize.Y < m_dwBufferRows) 
+					 || ((DWORD)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1) != m_dwRows)) 
+		{
+			::SetConsoleScreenBufferSize(m_hStdOutFresh, coordConsoleSize);
+			::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
+		}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -3093,438 +2031,63 @@ void Console::InitConsoleWndSize(DWORD dwColumns) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::ResizeConsoleWindow() {
+inline void Console::GetCursorRect(RECT& rectCursor) 
+{
 	
-	m_bInitializing = TRUE;
-	
-	if (m_nTextSelection) ClearSelection();
-	
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	::GetConsoleScreenBufferInfo(m_hStdOutFresh, &csbi);
-	
-	// in case buffer rows increased since last resize, and we're not using text buffer
-	if (!m_bUseTextBuffer) m_dwBufferRows = m_dwRows;
-	
-	COORD		coordBuffersSize;
-	coordBuffersSize.X = (SHORT)m_dwColumns;
-	coordBuffersSize.Y = (SHORT)m_dwBufferRows;
-	
-	SMALL_RECT	srConsoleRect;
-	srConsoleRect.Top	= srConsoleRect.Left =0;
-	srConsoleRect.Right	= m_dwColumns - 1;
-	srConsoleRect.Bottom= m_dwRows - 1;
-	
-	// order of setting window size and screen buffer size depends on current and desired dimensions
-	if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y > (DWORD) m_dwColumns * m_dwBufferRows) {
-		
-		if (m_bUseTextBuffer && (csbi.dwSize.Y > m_dwBufferRows)) {
-			coordBuffersSize.Y = m_dwBufferRows = csbi.dwSize.Y;
-		}
-		
-		::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
-		::SetConsoleScreenBufferSize(m_hStdOutFresh, coordBuffersSize);
-		
-		//	} else if (((DWORD)csbi.dwSize.X < m_dwColumns) || ((DWORD)csbi.dwSize.Y < m_dwBufferRows) || ((DWORD)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1) != m_dwRows)) {
-	} else if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y < (DWORD) m_dwColumns * m_dwBufferRows) {
-		
-		if (csbi.dwSize.Y < m_dwBufferRows) {
-			m_dwBufferRows = coordBuffersSize.Y = csbi.dwSize.Y;
-		}
-		
-		::SetConsoleScreenBufferSize(m_hStdOutFresh, coordBuffersSize);
-		::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
-	}
-	
-	SetScrollbarStuff();
-	CalcWindowSize();
-	SetWindowSizeAndPosition();
-	CreateOffscreenBuffers();
-	
-	if (m_bBitmapBackground) CreateBackgroundBitmap();
-	
-	// resize screen buffer
-	DEL_ARR(m_pScreenBuffer);
-	m_pScreenBuffer = new CHAR_INFO[m_dwRows * m_dwColumns];
-	
-	m_bInitializing = FALSE;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::RepaintWindow() {
-	
-	RECT rect;
-	rect.top	= 0;
-	rect.left	= 0;
-	rect.bottom	= m_nClientHeight;
-	rect.right	= m_nClientWidth;
-	
-	if (m_bBitmapBackground) {
-			if (m_bRelativeBackground) {
-			::BitBlt(m_hdcConsole, 0, 0, m_nClientWidth, m_nClientHeight, m_hdcBackground, m_nX+m_nXBorderSize-m_nBackgroundOffsetX, m_nY+m_nCaptionSize+m_nYBorderSize-m_nBackgroundOffsetY, SRCCOPY);
-		} else {
-			::BitBlt(m_hdcConsole, 0, 0, m_nClientWidth, m_nClientHeight, m_hdcBackground, 0, 0, SRCCOPY);
-		}
-	} else {
-		::FillRect(m_hdcConsole, &rect, m_hBkBrush);
-	}
-	
-	DWORD dwX			= m_nInsideBorder;
-	DWORD dwY			= m_nInsideBorder;
-	DWORD dwOffset		= 0;
-	
-	WORD attrBG;
-
-	// stuff used for caching
-	int			nBkMode		= TRANSPARENT;
-	COLORREF	crBkColor	= RGB(0, 0, 0);
-	COLORREF	crTxtColor	= RGB(0, 0, 0);
-	
-	int			nNewBkMode		= TRANSPARENT;
-	COLORREF	crNewBkColor	= RGB(0, 0, 0);
-	COLORREF	crNewTxtColor	= RGB(0, 0, 0);
-	
-	bool		bTextOut		= false;
-	
-	tstring		strText(_T(""));
-	
-	if (m_nCharWidth > 0) {
-		// fixed pitch font
-		for (DWORD i = 0; i < m_dwRows; ++i) {
-			
-			dwX = m_nInsideBorder;
-			dwY = i*m_nCharHeight + m_nInsideBorder;
-
-			nBkMode			= TRANSPARENT;
-			crBkColor		= RGB(0, 0, 0);
-			crTxtColor		= RGB(0, 0, 0);
-			
-			bTextOut		= false;
-			
-			attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
-			
-			// here we decide how to paint text over the backgound
-			if (m_arrConsoleColors[attrBG] == m_crBackground) {
-				::SetBkMode(m_hdcConsole, TRANSPARENT);
-				nBkMode		= TRANSPARENT;
-			} else {
-				::SetBkMode(m_hdcConsole, OPAQUE);
-				nBkMode		= OPAQUE;
-				::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
-				crBkColor	= m_arrConsoleColors[attrBG];
-			}
-			
-			::SetTextColor(m_hdcConsole, m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF]);
-			crTxtColor		= m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF];
-			
-			strText = m_pScreenBuffer[dwOffset].Char.UnicodeChar;
-			++dwOffset;
-
-			for (DWORD j = 1; j < m_dwColumns; ++j) {
-				
-				attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
-
-				if (m_arrConsoleColors[attrBG] == m_crBackground) {
-					if (nBkMode != TRANSPARENT) {
-						nBkMode = TRANSPARENT;
-						bTextOut = true;
-					}
-				} else {
-					if (nBkMode != OPAQUE) {
-						nBkMode = OPAQUE;
-						bTextOut = true;
-					}
-					if (crBkColor != m_arrConsoleColors[attrBG]) {
-						crBkColor = m_arrConsoleColors[attrBG];
-						bTextOut = true;
-					}
-				}
-
-				if (crTxtColor != (m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF])) {
-					crTxtColor = m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF];
-					bTextOut = true;
-				}
-
-				if (bTextOut) {
-
-					::TextOut(m_hdcConsole, dwX, dwY, strText.c_str(), strText.length());
-					ShadowTextOut(m_hdcConsole, dwX, dwY, strText.c_str(), strText.length());
-					dwX += strText.length() * m_nCharWidth;
-
-					::SetBkMode(m_hdcConsole, nBkMode);
-					::SetBkColor(m_hdcConsole, crBkColor);
-					::SetTextColor(m_hdcConsole, crTxtColor);
-
-					strText = m_pScreenBuffer[dwOffset].Char.UnicodeChar;
-					
-				} else {
-					strText += m_pScreenBuffer[dwOffset].Char.UnicodeChar;
-				}
-					
-				++dwOffset;
-			}
-
-			if (strText.length() > 0) {
-				::TextOut(m_hdcConsole, dwX, dwY, strText.c_str(), strText.length());
-				ShadowTextOut(m_hdcConsole, dwX, dwY, strText.c_str(), strText.length());
-			}
-		}
-
-	} else {
-		
-		// variable pitch font
-		memcpy(m_pScreenBuffer, m_pScreenBufferNew, sizeof(CHAR_INFO)*m_dwRows * m_dwColumns);
-		
-		for (DWORD i = 0; i < m_dwRows; ++i) {
-			
-			dwX = m_nInsideBorder;
-			dwY = i*m_nCharHeight + m_nInsideBorder;
-			
-			for (DWORD j = 0; j < m_dwColumns; ++j) {
-				
-				attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
-
-				// here we decide how to paint text over the backgound
-				if (m_arrConsoleColors[attrBG] == m_crBackground) {
-					::SetBkMode(m_hdcConsole, TRANSPARENT);
-				} else {
-					::SetBkMode(m_hdcConsole, OPAQUE);
-					::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
-				}
-				
-				::SetTextColor(m_hdcConsole, m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF]);
-				ShadowTextOut(m_hdcConsole, dwX, dwY, &(m_pScreenBuffer[dwOffset].Char.UnicodeChar), 1);
-				int nWidth;
-				::GetCharWidth32(m_hdcConsole, m_pScreenBuffer[dwOffset].Char.UnicodeChar, m_pScreenBuffer[dwOffset].Char.UnicodeChar, &nWidth);
-				dwX += nWidth;
-				++dwOffset;
-			}
-		}
-	}
-	
-	if (m_pCursor) DrawCursor(TRUE);
-	
-	::InvalidateRect(m_hWnd, NULL, FALSE);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::RepaintWindowChanges() {
-	
-	DWORD dwX			= m_nInsideBorder;
-	DWORD dwY			= m_nInsideBorder;
-	DWORD dwOffset		= 0;
-	
-	WORD attrBG;
-
-	if (m_nCharWidth > 0) {
-
-		// fixed pitch font
-		for (DWORD i = 0; i < m_dwRows; ++i) {
-			
-			dwX = m_nInsideBorder;
-			dwY = i*m_nCharHeight + m_nInsideBorder;
-
-			for (DWORD j = 0; j < m_dwColumns; ++j) {
-
-				if (memcmp(&(m_pScreenBuffer[dwOffset]), &(m_pScreenBufferNew[dwOffset]), sizeof(CHAR_INFO))) {
-
-					memcpy(&(m_pScreenBuffer[dwOffset]), &(m_pScreenBufferNew[dwOffset]), sizeof(CHAR_INFO));
-
-					RECT rect;
-					rect.top	= dwY;
-					rect.left	= dwX;
-					rect.bottom	= dwY + m_nCharHeight;
-					rect.right	= dwX + m_nCharWidth;
-					
-					if (m_bBitmapBackground) {
-						if (m_bRelativeBackground) {
-							::BitBlt(m_hdcConsole, dwX, dwY, m_nCharWidth, m_nCharHeight, m_hdcBackground, m_nX+m_nXBorderSize-m_nBackgroundOffsetX+(int)dwX, m_nY+m_nCaptionSize+m_nYBorderSize-m_nBackgroundOffsetY+(int)dwY, SRCCOPY);
-						} else {
-							::BitBlt(m_hdcConsole, dwX, dwY, m_nCharWidth, m_nCharHeight, m_hdcBackground, dwX, dwY, SRCCOPY);
-						}
-					} else {
-						::FillRect(m_hdcConsole, &rect, m_hBkBrush);
-					}
-					
-
-					attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
-
-					// here we decide how to paint text over the backgound
-					if (m_arrConsoleColors[attrBG] == m_crBackground) {
-						::SetBkMode(m_hdcConsole, TRANSPARENT);
-					} else {
-						::SetBkMode(m_hdcConsole, OPAQUE);
-						::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
-					}
-					
-					::SetTextColor(m_hdcConsole, m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF]);
-					ShadowTextOut(m_hdcConsole, dwX, dwY, &(m_pScreenBuffer[dwOffset].Char.UnicodeChar), 1);
-
-					::InvalidateRect(m_hWnd, &rect, FALSE);
-				}
-
-				dwX += m_nCharWidth;
-				++dwOffset;
-			}
-		}
-		
-	} else {
-		
-		// variable pitch font
-		if (memcmp(m_pScreenBuffer, m_pScreenBufferNew, sizeof(CHAR_INFO)*m_dwRows * m_dwColumns)) {
-		memcpy(m_pScreenBuffer, m_pScreenBufferNew, sizeof(CHAR_INFO)*m_dwRows * m_dwColumns);
-		
-		RECT rect;
-		rect.top	= 0;
-		rect.left	= 0;
-		rect.bottom	= m_nClientHeight;
-		rect.right	= m_nClientWidth;
-		
-		if (m_bBitmapBackground) {
-			if (m_bRelativeBackground) {
-				::BitBlt(m_hdcConsole, 0, 0, m_nClientWidth, m_nClientHeight, m_hdcBackground, m_nX+m_nXBorderSize-m_nBackgroundOffsetX, m_nY+m_nCaptionSize+m_nYBorderSize-m_nBackgroundOffsetY, SRCCOPY);
-			} else {
-				::BitBlt(m_hdcConsole, 0, 0, m_nClientWidth, m_nClientHeight, m_hdcBackground, 0, 0, SRCCOPY);
-			}
-		} else {
-			::FillRect(m_hdcConsole, &rect, m_hBkBrush);
-		}
-		
-		for (DWORD i = 0; i < m_dwRows; ++i) {
-			
-			dwX = m_nInsideBorder;
-			dwY = i*m_nCharHeight + m_nInsideBorder;
-			
-			for (DWORD j = 0; j < m_dwColumns; ++j) {
-				
-				attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
-				
-				// here we decide how to paint text over the backgound
-				if (m_arrConsoleColors[attrBG] == m_crBackground) {
-					::SetBkMode(m_hdcConsole, TRANSPARENT);
-				} else {
-					::SetBkMode(m_hdcConsole, OPAQUE);
-					::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
-				}
-				
-				::SetTextColor(m_hdcConsole, m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF]);
-				ShadowTextOut(m_hdcConsole, dwX, dwY, &(m_pScreenBuffer[dwOffset].Char.UnicodeChar), 1);
-				int nWidth;
-				::GetCharWidth32(m_hdcConsole, m_pScreenBuffer[dwOffset].Char.UnicodeChar, m_pScreenBuffer[dwOffset].Char.UnicodeChar, &nWidth);
-				dwX += nWidth;
-				++dwOffset;
-			}
-		}
-		
-		::InvalidateRect(m_hWnd, NULL, FALSE);
-		}
-	}
-	
-	if (m_pCursor) DrawCursor();
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::DrawCursor(BOOL bOnlyCursor) {
-	
-	// first, erase old cursor image if needed
-	if (!bOnlyCursor && m_bCursorVisible) {
-		RECT rectCursorOld;
-		DrawCursorBackground(rectCursorOld);
-		::InvalidateRect(m_hWnd, &rectCursorOld, FALSE);
-	}
-	
-	// now, see if the cursor is visible...
-	CONSOLE_CURSOR_INFO	cinf;
-	::GetConsoleCursorInfo(m_hStdOutFresh, &cinf);
-	
-	m_bCursorVisible = cinf.bVisible;
-	
-	// ... and draw it
-	if (m_bCursorVisible) {
-		
-		::GetConsoleScreenBufferInfo(m_hStdOutFresh, &m_csbiCursor);
-		
-		if (m_csbiCursor.dwCursorPosition.Y < m_csbiCursor.srWindow.Top || m_csbiCursor.dwCursorPosition.Y > m_csbiCursor.srWindow.Bottom) {
-			m_bCursorVisible = FALSE;
-			return;
-		}
-		
-		// set proper cursor offset
-		m_csbiCursor.dwCursorPosition.Y -= m_csbiCursor.srWindow.Top;
-		
-		RECT rectCursor;
-		if (!bOnlyCursor) {
-			DrawCursorBackground(rectCursor);
-		} else {
-			GetCursorRect(rectCursor);
-		}
-		m_pCursor->Draw(&rectCursor);
-		::InvalidateRect(m_hWnd, &rectCursor, FALSE);
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-inline void Console::GetCursorRect(RECT& rectCursor) {
-
 	::ZeroMemory(&rectCursor, sizeof(RECT));
 	
-	if (m_nCharWidth > 0) {
-		// fixed pitch
-		
-		rectCursor.left = m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nInsideBorder;
-		rectCursor.top = m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nInsideBorder;
-		rectCursor.right = m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nCharWidth + m_nInsideBorder;
-		rectCursor.bottom = m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nCharHeight + m_nInsideBorder;
-		
-	} else {
-		
-		// variable pitch, we do a little joggling here :-)
-		RECT			rectLine;
-		int				nLastCharWidth;
-		auto_ptr<TCHAR>	pszLine(new TCHAR[m_csbiCursor.dwCursorPosition.X + 2]);
-		::ZeroMemory(pszLine.get(), (m_csbiCursor.dwCursorPosition.X + 2)*sizeof(TCHAR));
-		
-		for (DWORD i = 0; i <= m_csbiCursor.dwCursorPosition.X; ++i) pszLine.get()[i] = m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y * m_dwColumns + i].Char.UnicodeChar;
-		
-		rectLine.left	= rectLine.right	= 0;
-		rectLine.top	= rectLine.bottom	= m_csbiCursor.dwCursorPosition.Y * m_nCharHeight;
-		
-		::DrawText(
-			m_hdcConsole, 
-			pszLine.get(),
-			-1,
-			&rectLine,
-			DT_CALCRECT);
-		
-		if (!::GetCharWidth32(
-			m_hdcConsole, 
-			pszLine.get()[m_csbiCursor.dwCursorPosition.X], 
-			pszLine.get()[m_csbiCursor.dwCursorPosition.X], 
-			&nLastCharWidth)) {
+	if (m_nCharWidth > 0) 
+		{
+			// fixed pitch
 			
-			return;
+			rectCursor.left = m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nInsideBorder;
+			rectCursor.top = m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nInsideBorder;
+			rectCursor.right = 
+				m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nCharWidth + m_nInsideBorder;
+			rectCursor.bottom = 
+				m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nCharHeight + m_nInsideBorder;
+			
+		} 
+	else
+		{
+			
+			// variable pitch, we do a little joggling here :-)
+			RECT			rectLine;
+			int				nLastCharWidth;
+			auto_ptr<TCHAR>	pszLine(new TCHAR[m_csbiCursor.dwCursorPosition.X + 2]);
+			::ZeroMemory(pszLine.get(), (m_csbiCursor.dwCursorPosition.X + 2)*sizeof(TCHAR));
+			
+			for (short i = 0; i <= m_csbiCursor.dwCursorPosition.X; ++i) 
+				{ 
+					pszLine.get()[i] = 
+						m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y * m_dwColumns + i].Char.UnicodeChar;
+				}
+			
+			rectLine.left	= rectLine.right	= 0;
+			rectLine.top	= rectLine.bottom	= m_csbiCursor.dwCursorPosition.Y * m_nCharHeight;
+			
+			::DrawText(
+								 m_hdcConsole, 
+								 pszLine.get(),
+								 -1,
+								 &rectLine,
+								 DT_CALCRECT);
+			
+			if (!::GetCharWidth32(
+														m_hdcConsole, 
+														pszLine.get()[m_csbiCursor.dwCursorPosition.X], 
+														pszLine.get()[m_csbiCursor.dwCursorPosition.X], 
+														&nLastCharWidth)) 
+				{
+					
+					return;
+				}
+			
+			rectCursor.left		= rectLine.right - (DWORD)nLastCharWidth + m_nInsideBorder;
+			rectCursor.top		= rectLine.top + m_nInsideBorder;
+			rectCursor.right	= rectLine.right + m_nInsideBorder;
+			rectCursor.bottom	= rectLine.bottom + m_nInsideBorder;
 		}
-
-		rectCursor.left		= rectLine.right - (DWORD)nLastCharWidth + m_nInsideBorder;
-		rectCursor.top		= rectLine.top + m_nInsideBorder;
-		rectCursor.right	= rectLine.right + m_nInsideBorder;
-		rectCursor.bottom	= rectLine.bottom + m_nInsideBorder;
-	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -3532,66 +2095,8 @@ inline void Console::GetCursorRect(RECT& rectCursor) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-inline void Console::DrawCursorBackground(RECT& rectCursor) {
-
-	GetCursorRect(rectCursor);
-	
-	WORD attrBG = m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y*m_dwColumns + m_csbiCursor.dwCursorPosition.X].Attributes >> 4;
-	
-	// here we decide how to paint text over the backgound
-	
-	if (m_arrConsoleColors[attrBG] == m_crBackground) {
-		::SetBkMode(m_hdcConsole, TRANSPARENT);
-	} else {
-		::SetBkMode(m_hdcConsole, OPAQUE);
-		::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
-	}
-	
-	::SetTextColor(m_hdcConsole, m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y*m_dwColumns + m_csbiCursor.dwCursorPosition.X].Attributes & 0xF]);
-	
-	if (m_bBitmapBackground) {
-		if (m_bRelativeBackground) {
-			::BitBlt(
-				m_hdcConsole, 
-				rectCursor.left, 
-				rectCursor.top, 
-				rectCursor.right - rectCursor.left, 
-				rectCursor.bottom - rectCursor.top, 
-				m_hdcBackground, 
-				m_nX+m_nXBorderSize-m_nBackgroundOffsetX + rectCursor.left, 
-				m_nY+m_nCaptionSize+m_nYBorderSize-m_nBackgroundOffsetY + rectCursor.top, 
-				SRCCOPY);
-
-		} else {
-			::BitBlt(
-				m_hdcConsole, 
-				rectCursor.left, 
-				rectCursor.top, 
-				rectCursor.right - rectCursor.left, 
-				rectCursor.bottom - rectCursor.top, 
-				m_hdcBackground, 
-				rectCursor.left, 
-				rectCursor.top, SRCCOPY);
-		}
-	} else {
-		::FillRect(m_hdcConsole, &rectCursor, m_hBkBrush);
-	}
-
-	ShadowTextOut(
-		m_hdcConsole, 
-		rectCursor.left, 
-		rectCursor.top, 
-		&(m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y*m_dwColumns + m_csbiCursor.dwCursorPosition.X].Char.UnicodeChar), 
-		1);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::ClearSelection() {
-	
+void Console::ClearSelection() 
+{
 	m_nTextSelection = TEXT_SELECTION_NONE;
 	m_coordSelOrigin.X = 0;
 	m_coordSelOrigin.Y = 0;
@@ -3605,14 +2110,16 @@ void Console::ClearSelection() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-DWORD Console::GetChangeRate() {
-	
+DWORD Console::GetChangeRate() 
+{
 	DWORD dwCount				= m_dwRows * m_dwColumns;
 	DWORD dwChangedPositions	= 0;
 	
-	for (DWORD i = 0; i < dwCount; ++i) {
-		if (m_pScreenBuffer[i].Char.UnicodeChar != m_pScreenBufferNew[i].Char.UnicodeChar) ++dwChangedPositions;
-	}
+	for (DWORD i = 0; i < dwCount; ++i) 
+		{
+			if (m_pScreenBuffer[i].Char.UnicodeChar != m_pScreenBufferNew[i].Char.UnicodeChar) 
+				{ ++dwChangedPositions; }
+		}
 	
 	return dwChangedPositions*100/dwCount;
 }
@@ -3622,7 +2129,8 @@ DWORD Console::GetChangeRate() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::ShowHideWindow() {
+void Console::ShowHideWindow() 
+{
 	::ShowWindowAsync(m_hWnd, m_bHideWindow ? SW_HIDE : SW_SHOW);
 }
 
@@ -3631,7 +2139,8 @@ void Console::ShowHideWindow() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::ShowHideConsole() {
+void Console::ShowHideConsole() 
+{
 	::ShowWindow(m_hWndConsole, m_bHideConsole ? SW_HIDE : SW_SHOWNORMAL);
 	if (!m_bHideConsole) ::SetForegroundWindow(m_hWndConsole);
 	UpdateHideConsoleMenuItem();
@@ -3642,8 +2151,8 @@ void Console::ShowHideConsole() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::ShowHideConsoleTimeout() {
-
+void Console::ShowHideConsoleTimeout() 
+{
 	::KillTimer(m_hWnd, TIMER_SHOW_HIDE_CONSOLE);
 	ShowHideConsole();
 }
@@ -3653,29 +2162,33 @@ void Console::ShowHideConsoleTimeout() {
 	
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::ToggleWindowOnTop() {
-	
-	if (m_dwCurrentZOrder == m_dwOriginalZOrder) {
-		m_dwCurrentZOrder	= Z_ORDER_ONTOP;
-	} else {
-		m_dwCurrentZOrder = m_dwOriginalZOrder;
-	}
+void Console::ToggleWindowOnTop() 
+{
+	if (m_dwCurrentZOrder == m_dwOriginalZOrder) 
+		{
+			m_dwCurrentZOrder	= Z_ORDER_ONTOP;
+		} 
+	else 
+		{
+			m_dwCurrentZOrder = m_dwOriginalZOrder;
+		}
 	
 	HWND hwndZ;
-	switch (m_dwCurrentZOrder) {
-	case Z_ORDER_REGULAR	: hwndZ = HWND_NOTOPMOST; break;
-	case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
-	case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
-	}
+	switch (m_dwCurrentZOrder) 
+		{
+		case Z_ORDER_REGULAR	: hwndZ = HWND_NOTOPMOST; break;
+		case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
+		case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
+		}
 	
 	::SetWindowPos(
-		m_hWnd, 
-		hwndZ, 
-		0, 
-		0, 
-		0, 
-		0, 
-		SWP_SHOWWINDOW | SWP_NOMOVE | SWP_NOSIZE);
+								 m_hWnd, 
+								 hwndZ, 
+								 0, 
+								 0, 
+								 0, 
+								 0, 
+								 SWP_SHOWWINDOW | SWP_NOMOVE | SWP_NOSIZE);
 	
 	UpdateOnTopMenuItem();
 }
@@ -3685,82 +2198,87 @@ void Console::ToggleWindowOnTop() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-BOOL Console::HandleMenuCommand(unsigned int dwID) {
+BOOL Console::HandleMenuCommand(unsigned int dwID) 
+{
 	
 	// check if it's one of the main menu commands
-	switch (dwID) {
-
-	case ID_SHOW_README_FILE:
-		ShowReadmeFile();
-		return FALSE;
-		
-	case ID_ABOUT:
-		About();
-		return FALSE;
-		
-	case ID_COPY:
-		CopyTextToClipboard();
-		return FALSE;
-		
-	case ID_PASTE:
-		PasteClipoardText();
-		return FALSE;
-		
-	case ID_HIDE_CONSOLE:
-		m_bHideConsole = !m_bHideConsole;
-		ShowHideConsole();
-		return FALSE;
-		
-	case ID_EDIT_CONFIG_FILE:
-		EditConfigFile();
-		return FALSE;
-		
-	case ID_RELOAD_SETTINGS:
-		ReloadSettings();
-		return FALSE;
-		
-	case ID_TOGGLE_ONTOP:
-		ToggleWindowOnTop();
-		return FALSE;
-		
-	case ID_EXIT_CONSOLE:
-		::SendMessage(m_hWnd, WM_CLOSE, 0, 0);
-		return FALSE;
-		
-	case SC_MINIMIZE:
-		if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) {
-			m_bHideWindow = !m_bHideWindow;
-			ShowHideWindow();
-			::SetForegroundWindow(m_hWnd);
+	switch (dwID) 
+		{
+		case ID_SHOW_README_FILE:
+			ShowReadmeFile();
 			return FALSE;
+			
+		case ID_ABOUT:
+			About();
+			return FALSE;
+			
+		case ID_COPY:
+			CopyTextToClipboard();
+			return FALSE;
+			
+		case ID_PASTE:
+			PasteClipoardText();
+			return FALSE;
+		
+		case ID_HIDE_CONSOLE:
+			m_bHideConsole = !m_bHideConsole;
+			ShowHideConsole();
+			return FALSE;
+		
+		case ID_EDIT_CONFIG_FILE:
+			EditConfigFile();
+			return FALSE;
+		
+		case ID_RELOAD_SETTINGS:
+			ReloadSettings();
+			return FALSE;
+		
+		case ID_TOGGLE_ONTOP:
+			ToggleWindowOnTop();
+			return FALSE;
+		
+		case ID_EXIT_CONSOLE:
+			::SendMessage(m_hWnd, WM_CLOSE, 0, 0);
+			return FALSE;
+		
+		case SC_MINIMIZE:
+			if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) 
+				{
+					m_bHideWindow = !m_bHideWindow;
+					ShowHideWindow();
+					::SetForegroundWindow(m_hWnd);
+					return FALSE;
+				}
+			return TRUE;
 		}
-		return TRUE;
-	}
 	
 	// check if it's one of config file submenu items
 	if ((dwID >= ID_FIRST_XML_FILE) &&
-		(dwID <= ID_LAST_XML_FILE)) {
-		
-		TCHAR	szFilename[MAX_PATH];
-		::ZeroMemory(szFilename, sizeof(szFilename));
-		::GetMenuString(m_hConfigFilesMenu, dwID, szFilename, MAX_PATH, MF_BYCOMMAND);
-		m_strConfigFile = tstring(szFilename);
-
-		if (m_dwReloadNewConfig == RELOAD_NEW_CONFIG_PROMPT) {
-			if (::MessageBox(
-					m_hWndConsole, 
-					_T("Load new settings?"), 
-					_T("New configuration selected"), 
-					MB_YESNO|MB_ICONQUESTION) == IDYES) {
-
-				ReloadSettings();
-			}
-		} else if (m_dwReloadNewConfig == RELOAD_NEW_CONFIG_YES) {
-			ReloadSettings();
+			(dwID <= ID_LAST_XML_FILE)) 
+		{
+			TCHAR	szFilename[MAX_PATH];
+			::ZeroMemory(szFilename, sizeof(szFilename));
+			::GetMenuString(m_hConfigFilesMenu, dwID, szFilename, MAX_PATH, MF_BYCOMMAND);
+			m_strConfigFile = tstring(szFilename);
+			
+			if (m_dwReloadNewConfig == RELOAD_NEW_CONFIG_PROMPT) 
+				{
+					if (::MessageBox(
+													 m_hWndConsole, 
+													 _T("Load new settings?"), 
+													 _T("New configuration selected"), 
+													 MB_YESNO|MB_ICONQUESTION) == IDYES) 
+						{
+							ReloadSettings();
+						}
+				} 
+			else if (m_dwReloadNewConfig == RELOAD_NEW_CONFIG_YES) 
+				{
+					ReloadSettings();
+				}
+			
+			return FALSE;
 		}
-
-		return FALSE;
-	}
 	
 	return TRUE;
 }
@@ -3770,10 +2288,12 @@ BOOL Console::HandleMenuCommand(unsigned int dwID) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::UpdateOnTopMenuItem() {
-	
-	::CheckMenuItem(::GetSubMenu(m_hPopupMenu, 0), ID_TOGGLE_ONTOP, MF_BYCOMMAND | ((m_dwCurrentZOrder == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
-	::CheckMenuItem(m_hSysMenu, ID_TOGGLE_ONTOP, MF_BYCOMMAND | ((m_dwCurrentZOrder == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
+void Console::UpdateOnTopMenuItem() 
+{
+	::CheckMenuItem(::GetSubMenu(m_hPopupMenu, 0), ID_TOGGLE_ONTOP, 
+									MF_BYCOMMAND | ((m_dwCurrentZOrder == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
+	::CheckMenuItem(m_hSysMenu, ID_TOGGLE_ONTOP, 
+									MF_BYCOMMAND | ((m_dwCurrentZOrder == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -3781,10 +2301,12 @@ void Console::UpdateOnTopMenuItem() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::UpdateHideConsoleMenuItem() {
-	
-	::CheckMenuItem(::GetSubMenu(m_hPopupMenu, 0), ID_HIDE_CONSOLE, MF_BYCOMMAND | (m_bHideConsole ? MF_CHECKED : MF_UNCHECKED));
-	::CheckMenuItem(m_hSysMenu, ID_HIDE_CONSOLE, MF_BYCOMMAND | (m_bHideConsole ? MF_CHECKED : MF_UNCHECKED));
+void Console::UpdateHideConsoleMenuItem() 
+{
+	::CheckMenuItem(::GetSubMenu(m_hPopupMenu, 0), ID_HIDE_CONSOLE, 
+									MF_BYCOMMAND | (m_bHideConsole ? MF_CHECKED : MF_UNCHECKED));
+	::CheckMenuItem(m_hSysMenu, ID_HIDE_CONSOLE, 
+									MF_BYCOMMAND | (m_bHideConsole ? MF_CHECKED : MF_UNCHECKED));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -3792,12 +2314,13 @@ void Console::UpdateHideConsoleMenuItem() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::UpdateConfigFilesSubmenu() {
-	
+void Console::UpdateConfigFilesSubmenu() 
+{
 	// populate m_hConfigFilesMenu
 	
 	// first, delete old items
-	while (::GetMenuItemCount(m_hConfigFilesMenu) != 0) ::DeleteMenu(m_hConfigFilesMenu, 0, MF_BYPOSITION);
+	while (::GetMenuItemCount(m_hConfigFilesMenu) != 0)
+		{  ::DeleteMenu(m_hConfigFilesMenu, 0, MF_BYPOSITION); }
 	
 	// then, enumerate the files
 	WIN32_FIND_DATA	wfd;
@@ -3814,34 +2337,37 @@ void Console::UpdateConfigFilesSubmenu() {
 	
 	// ... and enumearate files
 	hWfd = ::FindFirstFile(strSearchFileMask.c_str(), &wfd);
-	while ((hWfd != INVALID_HANDLE_VALUE) && bMoreFiles) {
+	while ((hWfd != INVALID_HANDLE_VALUE) && bMoreFiles) 
+		{
+			MENUITEMINFO	mii;
+			TCHAR			szFilename[MAX_PATH];
 		
-		MENUITEMINFO	mii;
-		TCHAR			szFilename[MAX_PATH];
+			_sntprintf(szFilename, MAX_PATH, _T("%s"),
+								 (strConfigFileDir + tstring(wfd.cFileName)).c_str());
 		
-		_sntprintf(szFilename, MAX_PATH, _T("%s"), (strConfigFileDir + tstring(wfd.cFileName)).c_str());
+			::ZeroMemory(&mii, sizeof(MENUITEMINFO));
+			mii.cbSize		= sizeof(MENUITEMINFO);
+			mii.fMask		= MIIM_TYPE | MIIM_ID | MIIM_STATE;
+			mii.fType		= MFT_RADIOCHECK | MFT_STRING;
+			mii.wID			= dwID++;
+			mii.dwTypeData	= szFilename;
+			mii.cch			= _tcslen(wfd.cFileName);
 		
-		::ZeroMemory(&mii, sizeof(MENUITEMINFO));
-		mii.cbSize		= sizeof(MENUITEMINFO);
-		mii.fMask		= MIIM_TYPE | MIIM_ID | MIIM_STATE;
-		mii.fType		= MFT_RADIOCHECK | MFT_STRING;
-		mii.wID			= dwID++;
-		mii.dwTypeData	= szFilename;
-		mii.cch			= _tcslen(wfd.cFileName);
-		
-		if (_tcsicmp(szFilename, m_strConfigFile.c_str()) == 0) {
-			mii.fState	= MFS_CHECKED;
-		} else {
-			mii.fState	= MFS_UNCHECKED;
+			if (_tcsicmp(szFilename, m_strConfigFile.c_str()) == 0) 
+				{
+					mii.fState	= MFS_CHECKED;
+				} 
+			else
+				{
+					mii.fState	= MFS_UNCHECKED;
+				}
+			
+			::InsertMenuItem(m_hConfigFilesMenu, dwID-ID_FIRST_XML_FILE, TRUE, &mii);
+			
+			bMoreFiles = ::FindNextFile(hWfd, &wfd);
 		}
-		
-		::InsertMenuItem(m_hConfigFilesMenu, dwID-ID_FIRST_XML_FILE, TRUE, &mii);
-		
-		bMoreFiles = ::FindNextFile(hWfd, &wfd);
-	}
 	
 	::FindClose(hWfd);
-
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -3849,51 +2375,58 @@ void Console::UpdateConfigFilesSubmenu() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::CopyTextToClipboard() {
-	
+void Console::CopyTextToClipboard() 
+{
 	int nSelX = (m_rectSelection.left - m_nInsideBorder)/m_nCharWidth;
 	int nSelY = (m_rectSelection.top - m_nInsideBorder)/m_nCharHeight;
 	int nSelColumns = (m_rectSelection.right-m_rectSelection.left)/m_nCharWidth;
 	int nSelRows = (m_rectSelection.bottom-m_rectSelection.top)/m_nCharHeight;
 	
 	// nothing selected, just return
-	if ((nSelColumns == 0) || (nSelRows == 0)) {
-		ClearSelection();
-		return;
-	}
+	if ((nSelColumns == 0) || (nSelRows == 0)) 
+		{
+			ClearSelection();
+			return;
+		}
 	
-	if (!::OpenClipboard(m_hWnd)) {
-		ClearSelection();
-		return;
-	}
+	if (!::OpenClipboard(m_hWnd)) 
+		{
+			ClearSelection();
+			return;
+		}
 	
 	::EmptyClipboard();
 	
 	HGLOBAL hglbData = ::GlobalAlloc(GMEM_MOVEABLE, (nSelColumns+2)*nSelRows*sizeof(TCHAR)); 
-	if (hglbData == NULL) { 
-		::CloseClipboard();
-		ClearSelection();
-		return;
-	} 
+	if (hglbData == NULL)
+		{ 
+			::CloseClipboard();
+			ClearSelection();
+			return;
+		} 
 	
 	// lock the handle and copy the text to the buffer. 
 	TCHAR* pszData = (TCHAR*)::GlobalLock(hglbData); 
 	int i =0;
-	for (i = 0; i < nSelRows; ++i) {
-		for (int j = 0; j < nSelColumns; ++j) {
-			pszData[i*(nSelColumns+2) + j] = m_pScreenBuffer[(nSelY+i)*m_dwColumns + nSelX + j].Char.UnicodeChar;
+	for (i = 0; i < nSelRows; ++i)
+		{
+			for (int j = 0; j < nSelColumns; ++j)
+				{
+					pszData[i*(nSelColumns+2) + j] = 
+						m_pScreenBuffer[(nSelY+i)*m_dwColumns + nSelX + j].Char.UnicodeChar;
+				}
+			// at the end of each row we put \r\n (except for the last one where we put \0)
+			pszData[i*(nSelColumns+2) + nSelColumns] = _TCHAR('\r');
+			pszData[i*(nSelColumns+2) + nSelColumns + 1] = _TCHAR('\n');
 		}
-		// at the end of each row we put \r\n (except for the last one where we put \0)
-		pszData[i*(nSelColumns+2) + nSelColumns] = _TCHAR('\r');
-		pszData[i*(nSelColumns+2) + nSelColumns + 1] = _TCHAR('\n');
-	}
 	pszData[(i-1)*(nSelColumns+2) + nSelColumns] = _TCHAR('\x0');
 	
 	::GlobalUnlock(hglbData);
 	
-	if (::SetClipboardData(CF_UNICODETEXT, hglbData) == NULL) {
-		// we need to global-free data only if copying failed
-	}
+	if (::SetClipboardData(CF_UNICODETEXT, hglbData) == NULL)
+		{
+			// we need to global-free data only if copying failed
+		}
 	::CloseClipboard();
 	// !!! No call to GlobalFree here. Next app that uses clipboard will call EmptyClipboard to free the data
 	
@@ -3905,20 +2438,20 @@ void Console::CopyTextToClipboard() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::PasteClipoardText() {
-	
+void Console::PasteClipoardText() 
+{
 	if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) return;
 	
 	
-	if (::OpenClipboard(m_hWnd)) {
-		HANDLE	hData = ::GetClipboardData(CF_UNICODETEXT);
-		
-		SendTextToConsole((TCHAR*)::GlobalLock(hData));
-		
-		::GlobalUnlock(hData);
-		::CloseClipboard();
-	}
-	
+	if (::OpenClipboard(m_hWnd)) 
+		{
+			HANDLE	hData = ::GetClipboardData(CF_UNICODETEXT);
+			
+			SendTextToConsole((TCHAR*)::GlobalLock(hData));
+			
+			::GlobalUnlock(hData);
+			::CloseClipboard();
+		}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -3926,26 +2459,32 @@ void Console::PasteClipoardText() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::ShowReadmeFile() {
-	
+void Console::ShowReadmeFile() 
+{
 	// prepare editor parameters
 	tstring strParams(m_strConfigEditorParams);
 	
-	if (strParams.length() == 0) {
-		// no params, just use the readme file
-		strParams = m_strReadmeFile;
-	} else {
-		int nPos = strParams.find(_T("%f"));
+	if (strParams.length() == 0) 
+		{
+			// no params, just use the readme file
+			strParams = m_strReadmeFile;
+		} 
+	else
+		{
+			int nPos = strParams.find(_T("%f"));
 		
-		if (nPos == tstring::npos) {
-			// no '%f' in editor params, concatenate readme file name
-			strParams += _T(" ");
-			strParams += m_strReadmeFile;
-		} else {
-			// replace '%f' with readme file name
-			strParams = strParams.replace(nPos, 2, m_strReadmeFile);
+			if (nPos == tstring::npos)
+				{
+					// no '%f' in editor params, concatenate readme file name
+					strParams += _T(" ");
+					strParams += m_strReadmeFile;
+				} 
+			else
+				{
+					// replace '%f' with readme file name
+					strParams = strParams.replace(nPos, 2, m_strReadmeFile);
+				}
 		}
-	}
 	
 	::ShellExecute(NULL, NULL, m_strConfigEditor.c_str(), strParams.c_str(), NULL, SW_SHOWNORMAL);
 }
@@ -3968,8 +2507,8 @@ void Console::About()
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::SendTextToConsole(LPCTSTR pszText) {
-	
+void Console::SendTextToConsole(LPCTSTR pszText) 
+{
 	if (!pszText || (_tcslen(pszText) == 0)) return;
 	
 	HANDLE hStdIn = ::CreateFile(_T("CONIN$"), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
@@ -3980,15 +2519,16 @@ void Console::SendTextToConsole(LPCTSTR pszText) {
 	INPUT_RECORD* pKeyEvents = new INPUT_RECORD[dwTextLen];
 	::ZeroMemory(pKeyEvents, sizeof(INPUT_RECORD)*dwTextLen);
 	
-	for (DWORD i = 0; i < dwTextLen; ++i) {
-		pKeyEvents[i].EventType = KEY_EVENT;
-		pKeyEvents[i].Event.KeyEvent.bKeyDown = TRUE;
-		pKeyEvents[i].Event.KeyEvent.wRepeatCount = 1;
-		pKeyEvents[i].Event.KeyEvent.wVirtualKeyCode = 0;
-		pKeyEvents[i].Event.KeyEvent.wVirtualScanCode = 0;
-		pKeyEvents[i].Event.KeyEvent.uChar.UnicodeChar = pszText[i];
-		pKeyEvents[i].Event.KeyEvent.dwControlKeyState = 0;
-	}
+	for (DWORD i = 0; i < dwTextLen; ++i)
+		{
+			pKeyEvents[i].EventType = KEY_EVENT;
+			pKeyEvents[i].Event.KeyEvent.bKeyDown = TRUE;
+			pKeyEvents[i].Event.KeyEvent.wRepeatCount = 1;
+			pKeyEvents[i].Event.KeyEvent.wVirtualKeyCode = 0;
+			pKeyEvents[i].Event.KeyEvent.wVirtualScanCode = 0;
+			pKeyEvents[i].Event.KeyEvent.uChar.UnicodeChar = pszText[i];
+			pKeyEvents[i].Event.KeyEvent.dwControlKeyState = 0;
+		}
 	::WriteConsoleInput(hStdIn, pKeyEvents, dwTextLen, &dwTextWritten);
 	
 	DEL_ARR(pKeyEvents);
@@ -4001,8 +2541,8 @@ void Console::SendTextToConsole(LPCTSTR pszText) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-tstring Console::GetFullFilename(const tstring& strFilename) {
-	
+tstring Console::GetFullFilename(const tstring& strFilename) 
+{
 	TCHAR			szFilePath[MAX_PATH];
 	TCHAR*			pszFilename;
 	
@@ -4017,9 +2557,10 @@ tstring Console::GetFullFilename(const tstring& strFilename) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-LRESULT CALLBACK Console::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	
-	switch (uMsg) { 
+LRESULT CALLBACK Console::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg)
+		{ 
 		case WM_CREATE: 
 			return 0; 
 			
@@ -4119,7 +2660,8 @@ LRESULT CALLBACK Console::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 			return 0;
 			
 		case WM_TIMER:
-			switch (wParam) {
+			switch (wParam) 
+				{
 				case TIMER_REPAINT_CHANGE:
 				case TIMER_REPAINT_MASTER:
 					g_pConsole->OnPaintTimer();
@@ -4135,21 +2677,27 @@ LRESULT CALLBACK Console::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 				default:
 					return 1;
-			}
+				}
 			
 		case WM_COMMAND:
-			if (g_pConsole->OnCommand(wParam, lParam)) {
-				return ::DefWindowProc(hwnd, uMsg, wParam, lParam); 
-			} else {
-				return 0;
-			}
+			if (g_pConsole->OnCommand(wParam, lParam)) 
+				{
+					return ::DefWindowProc(hwnd, uMsg, wParam, lParam); 
+				} 
+			else
+				{
+					return 0;
+				}
 			
 		case WM_SYSCOMMAND:
-			if (g_pConsole->OnSysCommand(wParam, lParam)) {
-				return ::DefWindowProc(hwnd, uMsg, wParam, lParam); 
-			} else {
-				return 0;
-			}
+			if (g_pConsole->OnSysCommand(wParam, lParam)) 
+				{
+					return ::DefWindowProc(hwnd, uMsg, wParam, lParam); 
+				} 
+			else 
+				{
+					return 0;
+				}
 
 		case WM_TRAY_NOTIFY:
 			g_pConsole->OnTrayNotify(wParam, lParam);
@@ -4167,7 +2715,7 @@ LRESULT CALLBACK Console::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 			// process other messages
 		default: 
 			return ::DefWindowProc(hwnd, uMsg, wParam, lParam); 
-	}
+		}
 	return 0;
 }
 
@@ -4177,30 +2725,37 @@ LRESULT CALLBACK Console::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 /////////////////////////////////////////////////////////////////////////////
 // MonitorThread	- shell activities monitor
 
-DWORD WINAPI Console::MonitorThreadStatic(LPVOID lpParam) {
+DWORD WINAPI Console::MonitorThreadStatic(LPVOID lpParam) 
+{
 	return ((Console*)lpParam)->MonitorThread();
 }
 
-DWORD Console::MonitorThread() {
-	
+DWORD Console::MonitorThread() 
+{
 	HANDLE	arrHandles[] = {m_hConsoleProcess, m_hQuitEvent, m_hStdOut};
 	
-	while (1) {
-		DWORD dwWait = ::WaitForMultipleObjects(3, arrHandles, FALSE, INFINITE);
-
-		if (dwWait == WAIT_OBJECT_0) {
-			::PostMessage(m_hWnd, WM_CLOSE, 0, 0);
-			break;
-		} else if (dwWait == WAIT_OBJECT_0 + 1) {
-			break;
-		} else if (dwWait == WAIT_OBJECT_0 + 2) {
-			::SetTimer(m_hWnd, TIMER_REPAINT_CHANGE, m_dwChangeRepaintInt, NULL);
-			// we sleep here for a while, to prevent 'flooding' of m_hStdOut events
-			::Sleep(m_dwChangeRepaintInt);
-			::ResetEvent(m_hStdOut);
+	while (1) 
+		{
+			DWORD dwWait = ::WaitForMultipleObjects(3, arrHandles, FALSE, INFINITE);
+			
+			if (dwWait == WAIT_OBJECT_0) 
+				{
+					::PostMessage(m_hWnd, WM_CLOSE, 0, 0);
+					break;
+				} 
+			else if (dwWait == WAIT_OBJECT_0 + 1) 
+				{
+					break;
+				} 
+			else if (dwWait == WAIT_OBJECT_0 + 2) 
+				{
+					::SetTimer(m_hWnd, TIMER_REPAINT_CHANGE, m_dwChangeRepaintInt, NULL);
+					// we sleep here for a while, to prevent 'flooding' of m_hStdOut events
+					::Sleep(m_dwChangeRepaintInt);
+					::ResetEvent(m_hStdOut);
+				}
 		}
-	}
-
+	
 	return 0;
 }
 
@@ -4209,24 +2764,17 @@ DWORD Console::MonitorThread() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-BOOL WINAPI Console::CtrlHandler(DWORD dwCtrlType) {
-	if ((dwCtrlType == CTRL_C_EVENT) || (dwCtrlType == CTRL_BREAK_EVENT)) {
-		return TRUE;
-	} else {
-		return FALSE;
-	}
+BOOL WINAPI Console::CtrlHandler(DWORD dwCtrlType) 
+{
+	if ((dwCtrlType == CTRL_C_EVENT) || (dwCtrlType == CTRL_BREAK_EVENT)) 
+		{
+			return TRUE;
+		} 
+	else 
+		{
+			return FALSE;
+		}
 }
 
 /////////////////////////////////////////////////////////////////////////////
 
-/************************/
-/* Console::ShadowTextOut */
-/**********************/
-inline void Console::ShadowTextOut (HDC hdc, int nXStart, int nYStart, LPCTSTR lpString, int cbString) {
-	if (m_shadowDistance != 0) {
-		COLORREF origColor = ::SetTextColor(hdc, m_shadowColor);
-		::TextOut(hdc, nXStart+m_shadowDistance, nYStart+m_shadowDistance, lpString, cbString);
-		::SetTextColor(hdc, origColor);
-	}
-	::TextOut(hdc, nXStart, nYStart, lpString, cbString);
-}

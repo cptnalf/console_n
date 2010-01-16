@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="common_settings"
+	>
+	<Tool
+		Name="VCCLCompilerTool"
+		AssemblerListingLocation="$(IntDir)\"
+		ProgramDataBaseFileName="$(IntDir)\vc$(ProjectName).pdb"
+		GenerateXMLDocumentationFiles="false"
+		WarningLevel="4"
+		EnablePREfast="true"
+	/>
+	<Tool
+		Name="VCLinkerTool"
+		AdditionalDependencies="lib\FreeImagePlus.lib comctl32.lib urlmon.lib odbc32.lib odbccp32.lib"
+		SubSystem="2"
+	/>
+</VisualStudioPropertySheet>

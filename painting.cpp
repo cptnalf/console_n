@@ -167,77 +167,76 @@ void Console::RepaintWindow()
 					crTxtColor		= m_bUseFontColor 
 						? m_crFontColor
 						: m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF];
-			
+					
 					strText = m_pScreenBuffer[dwOffset].Char.UnicodeChar;
 					++dwOffset;
+					
+					for (DWORD j = 1; j < m_dwColumns; ++j) 
+						{
+							attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
+							
+							if (m_arrConsoleColors[attrBG] == m_crBackground) 
+								{
+									if (nBkMode != TRANSPARENT) 
+										{
+											nBkMode = TRANSPARENT;
+											bTextOut = true;
+										}
+								} 
+							else
+								{
+									if (nBkMode != OPAQUE)
+										{
+											nBkMode = OPAQUE;
+											bTextOut = true;
+										}
+									if (crBkColor != m_arrConsoleColors[attrBG]) 
+										{
+											crBkColor = m_arrConsoleColors[attrBG];
+											bTextOut = true;
+										}
+								}
 
-			for (DWORD j = 1; j < m_dwColumns; ++j) 
-				{
-					attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
-					
-					if (m_arrConsoleColors[attrBG] == m_crBackground) 
-						{
-							if (nBkMode != TRANSPARENT) 
+							if (crTxtColor != (m_bUseFontColor 
+																 ? m_crFontColor
+																 : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF])) 
 								{
-									nBkMode = TRANSPARENT;
+									crTxtColor = m_bUseFontColor
+										? m_crFontColor
+										: m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF];
 									bTextOut = true;
 								}
-						} 
-					else
-						{
-							if (nBkMode != OPAQUE)
-								{
-									nBkMode = OPAQUE;
-									bTextOut = true;
-								}
-							if (crBkColor != m_arrConsoleColors[attrBG]) 
-								{
-									crBkColor = m_arrConsoleColors[attrBG];
-									bTextOut = true;
-								}
-						}
-
-					if (crTxtColor != (m_bUseFontColor 
-														 ? m_crFontColor
-														 : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF])) 
-						{
-							crTxtColor = m_bUseFontColor
-								? m_crFontColor
-								: m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF];
-							bTextOut = true;
-						}
 					
-					if (bTextOut)
-						{
-							//::TextOut(m_hdcConsole, dwX, dwY, 
-							//					strText.c_str(), strText.length());
-							ShadowTextOut(m_hdcConsole, dwX, dwY, 
-														strText.c_str(), strText.length());
-							dwX += strText.length() * m_nCharWidth;
+							if (bTextOut)
+								{
+									//::TextOut(m_hdcConsole, dwX, dwY, 
+									//					strText.c_str(), strText.length());
+									ShadowTextOut(m_hdcConsole, dwX, dwY, 
+																strText.c_str(), strText.length());
+									dwX += strText.length() * m_nCharWidth;
 							
-							::SetBkMode(m_hdcConsole, nBkMode);
-							::SetBkColor(m_hdcConsole, crBkColor);
-							::SetTextColor(m_hdcConsole, crTxtColor);
+									::SetBkMode(m_hdcConsole, nBkMode);
+									::SetBkColor(m_hdcConsole, crBkColor);
+									::SetTextColor(m_hdcConsole, crTxtColor);
 							
-							strText = m_pScreenBuffer[dwOffset].Char.UnicodeChar;
+									strText = m_pScreenBuffer[dwOffset].Char.UnicodeChar;
 							
-						} 
-					else
-						{
-							strText += m_pScreenBuffer[dwOffset].Char.UnicodeChar;
-						}
+								} 
+							else
+								{
+									strText += m_pScreenBuffer[dwOffset].Char.UnicodeChar;
+								}
 					
-					++dwOffset;
-				}
+							++dwOffset;
+						}
 			
-			if (strText.length() > 0)
-				{
-					//::TextOut(m_hdcConsole, dwX, dwY, strText.c_str(), strText.length());
-					ShadowTextOut(m_hdcConsole, dwX, dwY, strText.c_str(), strText.length());
+					if (strText.length() > 0)
+						{
+							//::TextOut(m_hdcConsole, dwX, dwY, strText.c_str(), strText.length());
+							ShadowTextOut(m_hdcConsole, dwX, dwY, strText.c_str(), strText.length());
+						}
 				}
-				}
-
-		} 
+		}
 	else
 		{
 			// variable pitch font

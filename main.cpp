@@ -79,10 +79,13 @@ TCHAR* ParseNextToken(TCHAR* pSrc, LPTSTR pszDest) {
 /////////////////////////////////////////////////////////////////////////////
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
-                      HINSTANCE  hPrevInstance,
-                      LPTSTR     lpCmdLine,
-                      int        nCmdShow) {
-
+											 HINSTANCE  hPrevInstance,
+											 LPTSTR     lpCmdLine,
+											 int        nCmdShow) 
+{
+	UNREFERENCED_PARAMETER(hPrevInstance);
+	UNREFERENCED_PARAMETER(nCmdShow);
+	
 #ifdef _DEBUG
 	int nDbgFlag = ::_CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
 	nDbgFlag |= _CRTDBG_LEAK_CHECK_DF;
@@ -111,7 +114,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	TCHAR	szReloadNewConfig[32];
 	TCHAR	szTmp[MAX_PATH];
 	TCHAR*	pPos = lpCmdLine;
-	DWORD	dwPos = 0;
 
 	::ZeroMemory(szConfigFile, sizeof(szConfigFile));
 	::ZeroMemory(szShellCmdLine, sizeof(szShellCmdLine));
@@ -135,7 +137,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			}
 		} else if (szConfigFile[0] == 0x0) {
 			// config file
-			_tcscpy(szConfigFile, szTmp);
+			_tcscpy_s(szConfigFile, sizeof(szConfigFile), szTmp);
 		}
 
 	}

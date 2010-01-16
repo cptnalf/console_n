@@ -122,11 +122,7 @@ void Console::RepaintWindow()
 	int			nBkMode		= TRANSPARENT;
 	COLORREF	crBkColor	= RGB(0, 0, 0);
 	COLORREF	crTxtColor	= RGB(0, 0, 0);
-	
-	int			nNewBkMode		= TRANSPARENT;
-	COLORREF	crNewBkColor	= RGB(0, 0, 0);
-	COLORREF	crNewTxtColor	= RGB(0, 0, 0);
-	
+		
 	bool		bTextOut		= false;
 	
 	tstring		strText(_T(""));

@@ -78,10 +78,14 @@ BOOL Console::SetTrayIcon(DWORD dwMessage)
 		{
 			strToolTip.resize(59);
 			strToolTip += _T(" ...");
+			
+#ifdef _DEBUG
 			DWORD dw = strToolTip.length();
+			dw = 12 + dw - 12;
+#endif
 		}
 	
-	_tcscpy(tnd.szTip, strToolTip.c_str());
+	_tcscpy_s(tnd.szTip, sizeof(tnd.szTip), strToolTip.c_str());
 	return ::Shell_NotifyIcon(dwMessage, &tnd);
 }
 

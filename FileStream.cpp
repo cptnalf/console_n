@@ -63,11 +63,15 @@ HRESULT CreateFileStream(
 						dwFlagsAndAttributes,
 						hTemplateFile);
 
-	if (hFile == INVALID_HANDLE_VALUE) {
-		DWORD a = ::GetLastError();
-		ppStream = NULL;
-		return E_FAIL;
-	}
+	if (hFile == INVALID_HANDLE_VALUE) 
+		{
+#ifdef _DEBUG
+			DWORD a = ::GetLastError();
+			a = 12 + a - 12;
+#endif
+			ppStream = NULL;
+			return E_FAIL;
+		}
 
 	FileStream* pFileStream = new FileStream(hFile);
 
@@ -170,6 +174,7 @@ STDMETHODIMP FileStream::Seek(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INT
 
 STDMETHODIMP FileStream::SetSize(ULARGE_INTEGER libNewSize)
 {
+	UNREFERENCED_PARAMETER(libNewSize);
 	return S_OK;
 }
 
@@ -182,6 +187,10 @@ STDMETHODIMP FileStream::SetSize(ULARGE_INTEGER libNewSize)
 
 STDMETHODIMP FileStream::CopyTo(IStream *pstm, ULARGE_INTEGER cb, ULARGE_INTEGER *pcbRead, ULARGE_INTEGER *pcbWritten)
 {
+	UNREFERENCED_PARAMETER(pstm);
+	UNREFERENCED_PARAMETER(cb);
+	UNREFERENCED_PARAMETER(pcbRead);
+	UNREFERENCED_PARAMETER(pcbWritten);
 	// later...
 	return E_NOTIMPL;
 }
@@ -194,6 +203,7 @@ STDMETHODIMP FileStream::CopyTo(IStream *pstm, ULARGE_INTEGER cb, ULARGE_INTEGER
 
 STDMETHODIMP FileStream::Commit(DWORD grfCommitFlags)
 {
+	UNREFERENCED_PARAMETER(grfCommitFlags);
 	return S_OK;
 }
 
@@ -216,6 +226,9 @@ STDMETHODIMP FileStream::Revert(void)
 
 STDMETHODIMP FileStream::LockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType)
 {
+	UNREFERENCED_PARAMETER(libOffset);
+	UNREFERENCED_PARAMETER(cb);
+	UNREFERENCED_PARAMETER(dwLockType);
 	return E_NOTIMPL;
 }
 
@@ -227,6 +240,9 @@ STDMETHODIMP FileStream::LockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb,
 
 STDMETHODIMP FileStream::UnlockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType)
 {
+	UNREFERENCED_PARAMETER(libOffset);
+	UNREFERENCED_PARAMETER(cb);
+	UNREFERENCED_PARAMETER(dwLockType);
 	return E_NOTIMPL;
 }
 
@@ -238,6 +254,9 @@ STDMETHODIMP FileStream::UnlockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER c
 
 STDMETHODIMP FileStream::Stat(STATSTG *pstatstg, DWORD grfStatFlag)
 {
+	UNREFERENCED_PARAMETER(pstatstg);
+	UNREFERENCED_PARAMETER(grfStatFlag);
+	
 	return E_NOTIMPL;
 }
 
@@ -249,6 +268,7 @@ STDMETHODIMP FileStream::Stat(STATSTG *pstatstg, DWORD grfStatFlag)
 
 STDMETHODIMP FileStream::Clone(IStream **ppstm)
 {
+	UNREFERENCED_PARAMETER(ppstm);
 	return E_NOTIMPL;
 }
 

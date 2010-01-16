@@ -221,14 +221,15 @@ void Console::OnVScroll(WPARAM wParam)
 			return;
 		}
 	
-	if (nDelta = max(-nCurrentPos, min(nDelta, (int)(m_dwBufferRows-m_dwRows) - nCurrentPos))) 
+	nDelta = max(-nCurrentPos, min(nDelta, (int)(m_dwBufferRows-m_dwRows) - nCurrentPos));
+	if (nDelta)
 		{
 			
 			nCurrentPos += nDelta; 
 			
 			SMALL_RECT sr;
-			sr.Top = nDelta;
-			sr.Bottom = nDelta;
+			sr.Top = (short)nDelta;
+			sr.Bottom = (short)nDelta;
 			sr.Left = sr.Right = 0;
 			::SetConsoleWindowInfo(m_hStdOutFresh, FALSE, &sr);
 		
@@ -293,8 +294,10 @@ void Console::OnLButtonDown(UINT uiFlags, POINTS points)
 					
 					m_nTextSelection = TEXT_SELECTION_SELECTING;
 					
-					m_coordSelOrigin.X = min(max(points.x - m_nInsideBorder, 0) / m_nCharWidth, (short)(m_dwColumns-1));
-					m_coordSelOrigin.Y = min(max(points.y - m_nInsideBorder, 0) / m_nCharHeight, (short)(m_dwRows-1));
+					m_coordSelOrigin.X = 	min((short)(max(points.x - m_nInsideBorder, 0) / m_nCharWidth), 
+																		(short)(m_dwColumns-1));
+					m_coordSelOrigin.Y = min((short)(max(points.y - m_nInsideBorder, 0) / m_nCharHeight), 
+																	 (short)(m_dwRows-1));
 					
 					m_rectSelection.left = m_rectSelection.right = 
 						m_coordSelOrigin.X * m_nCharWidth + m_nInsideBorder;
@@ -326,6 +329,8 @@ void Console::OnLButtonDown(UINT uiFlags, POINTS points)
 
 void Console::OnLButtonUp(UINT uiFlags, POINTS points) 
 {
+	UNREFERENCED_PARAMETER(uiFlags);
+	UNREFERENCED_PARAMETER(points);
 	
 	if ((m_nTextSelection == TEXT_SELECTION_SELECTED) ||
 			// X Windows select/copy style
@@ -377,6 +382,8 @@ void Console::OnLButtonUp(UINT uiFlags, POINTS points)
 
 void Console::OnLButtonDblClick(UINT uiFlags, POINTS points) 
 {
+	UNREFERENCED_PARAMETER(uiFlags);
+	UNREFERENCED_PARAMETER(points);
 	
 	ToggleWindowOnTop();
 }
@@ -386,8 +393,8 @@ void Console::OnLButtonDblClick(UINT uiFlags, POINTS points)
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnRButtonUp(UINT uiFlags, POINTS points) {
-	
+void Console::OnRButtonUp(UINT uiFlags, POINTS points) 
+{
 	if (uiFlags & MK_SHIFT) 
 		{
 			PasteClipoardText();
@@ -414,8 +421,10 @@ void Console::OnRButtonUp(UINT uiFlags, POINTS points) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnMButtonDown(UINT uiFlags, POINTS points) {
-
+void Console::OnMButtonDown(UINT uiFlags, POINTS points) 
+{
+	UNREFERENCED_PARAMETER(uiFlags);
+	UNREFERENCED_PARAMETER(points);
 	PasteClipoardText();
 }
 
@@ -424,8 +433,9 @@ void Console::OnMButtonDown(UINT uiFlags, POINTS points) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnMouseMove(UINT uiFlags, POINTS points) {
-
+void Console::OnMouseMove(UINT uiFlags, POINTS points) 
+{
+	
 	RECT	windowRect;
 	int		deltaX, deltaY;
 	POINT	point;
@@ -462,8 +472,10 @@ void Console::OnMouseMove(UINT uiFlags, POINTS points) {
 									
 									::InvalidateRect(m_hWnd, &m_rectSelection, FALSE);
 									
-									coordSel.X = min(max(points.x - m_nInsideBorder, 0) / m_nCharWidth, (short)(m_dwColumns-1));
-									coordSel.Y = min(max(points.y - m_nInsideBorder, 0) / m_nCharHeight, (short)(m_dwRows-1));
+									coordSel.X = min((short)(max(points.x - m_nInsideBorder, 0) / m_nCharWidth),
+																	 (short)(m_dwColumns-1));
+									coordSel.Y = min((short)(max(points.y - m_nInsideBorder, 0) / m_nCharHeight),
+																	 (short)(m_dwRows-1));
 									
 									TRACE(_T("End point: %ix%i\n"), coordSel.X, coordSel.Y);
 									
@@ -504,9 +516,11 @@ void Console::OnMouseMove(UINT uiFlags, POINTS points) {
 							HWND hwndZ;
 							switch (m_dwCurrentZOrder)
 								{
-								case Z_ORDER_REGULAR	: hwndZ = HWND_NOTOPMOST; break;
 								case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
 								case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
+									
+								default:
+								case Z_ORDER_REGULAR	: hwndZ = HWND_NOTOPMOST; break;
 								}
 							
 							::SetWindowPos(
@@ -531,6 +545,8 @@ void Console::OnMouseMove(UINT uiFlags, POINTS points) {
 
 BOOL Console::OnCommand(WPARAM wParam, LPARAM lParam)
 {
+	UNREFERENCED_PARAMETER(lParam);
+
 	if (HIWORD(wParam) == 0) 
 		{
 			// popup menu
@@ -547,6 +563,7 @@ BOOL Console::OnCommand(WPARAM wParam, LPARAM lParam)
 
 BOOL Console::OnSysCommand(WPARAM wParam, LPARAM lParam) 
 {
+	UNREFERENCED_PARAMETER(lParam);
 	
 	return HandleMenuCommand(wParam);
 }
@@ -558,6 +575,7 @@ BOOL Console::OnSysCommand(WPARAM wParam, LPARAM lParam)
 
 void Console::OnTrayNotify(WPARAM wParam, LPARAM lParam) 
 {
+	UNREFERENCED_PARAMETER(wParam);
 	
 	switch (lParam) 
 		{
@@ -775,6 +793,8 @@ void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos)
 					// we'll snap Console window to the desktop edges
 					RECT rectDesktop;
 					
+					ZeroMemory(&rectDesktop, sizeof(rectDesktop));
+					
 					if (g_bWin2000) 
 						{
 							POINT pt;
@@ -923,7 +943,9 @@ void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos)
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnActivateApp(BOOL bActivate, DWORD dwFlags) {
+void Console::OnActivateApp(BOOL bActivate, DWORD dwFlags) 
+{
+	UNREFERENCED_PARAMETER(dwFlags);
 	
 	if (m_pCursor) 
 		{
@@ -952,6 +974,8 @@ void Console::OnActivateApp(BOOL bActivate, DWORD dwFlags) {
 
 void Console::OnInitMenuPopup(HMENU hMenu, UINT uiPos, BOOL bSysMenu) 
 {
+	UNREFERENCED_PARAMETER(uiPos);
+	UNREFERENCED_PARAMETER(bSysMenu);
 	
 	if ((hMenu != ::GetSubMenu(m_hPopupMenu, 0)) && (hMenu != m_hSysMenu)) return;
 	
@@ -1000,6 +1024,7 @@ void Console::OnDropFiles(HDROP hDrop)
 
 void Console::OnWallpaperChanged(const TCHAR* pszFilename) 
 {
+	UNREFERENCED_PARAMETER(pszFilename);
 	
 	if (m_dwTransparency == TRANSPARENCY_FAKE) 
 		{

@@ -14,13 +14,99 @@
 #include "Dialogs.h"
 #include "Console.h"
 
-BOOL Console::GetOptions()
+namespace
 {
-	class XmlException {
+	class XmlException 
+	{
 	public: XmlException(BOOL bRet) : m_bRet(bRet){};
 		BOOL m_bRet;
 	};
 	
+	IXMLElement* GetElement(IXMLElementCollection* collection, const TCHAR* elementName)
+	{
+		IXMLElement* pElement = NULL;
+		
+		if (!SUCCEEDED(collection->item(CComVariant(elementName), CComVariant(0), 
+															 (IDispatch**)&pElement)))
+			{ throw new XmlException(FALSE); }
+		
+		return pElement;
+	}
+	
+	IXMLElementCollection* GetCollection(IXMLElement* element)
+	{
+		IXMLElementCollection* pColl = NULL;
+		
+		if (!SUCCEEDED(element->get_children(&pColl))) throw new XmlException(FALSE);
+		
+		return pColl;
+	}
+
+	
+	template<typename T>
+	void GetAttribute(IXMLElement* element, const TCHAR* attribute, T& outItem)
+	{
+		throw 12;
+	}
+	
+	template<>
+	void GetAttribute<tstring>(IXMLElement* element, const TCHAR* attribute, tstring& outStr)
+	{
+		USES_CONVERSION;
+		CComVariantOut value;
+		
+		element->getAttribute(CComBSTR(attribute), value.Out());
+		if (value.vt == VT_BSTR) { outStr = OLE2T(value.bstrVal); }
+	}
+	
+	template<>
+	void GetAttribute<unsigned long>(IXMLElement* element, 
+																	 const TCHAR* attribute, unsigned long& outUlong)
+	{
+		USES_CONVERSION;
+		CComVariantOut value;
+		
+		element->getAttribute(CComBSTR(attribute), value.Out());
+		if (value.vt == VT_BSTR) { outUlong = _ttol(OLE2T(value.bstrVal)); }
+	}
+
+	template<>
+	void GetAttribute<unsigned int>(IXMLElement* element, 
+																	const TCHAR* attribute, unsigned int& outUint)
+	{
+		USES_CONVERSION;
+		CComVariantOut value;
+		
+		element->getAttribute(CComBSTR(attribute), value.Out());
+		if (value.vt == VT_BSTR) { outUint = _ttoi(OLE2T(value.bstrVal)); }
+	}
+	
+	template<>
+	void GetAttribute<int>(IXMLElement* element, 
+												 const TCHAR* attribute, int& outInt)
+	{
+		USES_CONVERSION;
+		CComVariantOut value;
+		
+		element->getAttribute(CComBSTR(attribute), value.Out());
+		if (value.vt == VT_BSTR) { outInt = _ttoi(OLE2T(value.bstrVal)); }
+	}
+	
+	template<>
+	void GetAttribute<unsigned char>(IXMLElement* element, 
+																	 const TCHAR* attribute, unsigned char& outUchar)
+	{
+		USES_CONVERSION;
+		CComVariantOut value;
+		
+		element->getAttribute(CComBSTR(attribute), value.Out());
+		if (value.vt == VT_BSTR) { outUchar = (unsigned char)_ttoi(OLE2T(value.bstrVal)); }
+	}
+};
+
+
+BOOL Console::GetOptions()
+{
 	BOOL bRet = FALSE;
 	
 	IStream*				pFileStream			= NULL;
@@ -43,28 +129,28 @@ BOOL Console::GetOptions()
 		
 		// open file stream
 		if (!SUCCEEDED(CreateFileStream(
-			m_strConfigFile.c_str(), 
-			GENERIC_READ,
-			0,
-			NULL,
-			OPEN_EXISTING,
-			0, 
-			NULL,
-			&pFileStream))) {
-			
-			throw XmlException(FALSE);
-		}
+																		m_strConfigFile.c_str(), 
+																		GENERIC_READ,
+																		0,
+																		NULL,
+																		OPEN_EXISTING,
+																		0, 
+																		NULL,
+																		&pFileStream))) 
+			{
+				throw XmlException(FALSE);
+			}
 		
 		// create XML document instance
 		if (!SUCCEEDED(::CoCreateInstance(
-			CLSID_XMLDocument, 
-			NULL, 
-			CLSCTX_INPROC_SERVER, 
-			IID_IXMLDocument, 
-			(void**)&pConfigDoc))) {
-			
-			throw XmlException(FALSE);
-		}
+																			CLSID_XMLDocument, 
+																			NULL, 
+																			CLSCTX_INPROC_SERVER, 
+																			IID_IXMLDocument, 
+																			(void**)&pConfigDoc))) 
+			{
+				throw XmlException(FALSE);
+			}
 		
 		// load the configuration file
 		pConfigDoc->QueryInterface(IID_IPersistStreamInit, (void **)&pPersistStream);
@@ -84,656 +170,773 @@ BOOL Console::GetOptions()
 		bstr.ToUpper();
 		
 		if (!(bstr == CComBSTR(_T("CONSOLE")))) throw XmlException(FALSE);
-
-		pRootElement->getAttribute(CComBSTR(_T("title")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) {
-			m_strWindowTitle = OLE2T(varAttValue.bstrVal);
-			m_strWindowTitleCurrent = m_strWindowTitle;
-		}
 		
-		pRootElement->getAttribute(CComBSTR(_T("refresh")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_dwMasterRepaintInt = _ttol(OLE2T(varAttValue.bstrVal));
+		GetAttribute(pRootElement, _T("title"), m_strWindowTitle);
+		m_strWindowTitleCurrent = m_strWindowTitle;
 		
-		pRootElement->getAttribute(CComBSTR(_T("change_refresh")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_dwChangeRepaintInt = _ttol(OLE2T(varAttValue.bstrVal));
+		GetAttribute(pRootElement, _T("refresh"), m_dwMasterRepaintInt);
+		
+		GetAttribute(pRootElement, _T("change_refresh"), m_dwChangeRepaintInt);
 		if ((int)m_dwChangeRepaintInt < 5) m_dwChangeRepaintInt = 5;
 		
-		pRootElement->getAttribute(CComBSTR(_T("shell")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_strShell = OLE2T(varAttValue.bstrVal);
-		
-		pRootElement->getAttribute(CComBSTR(_T("editor")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_strConfigEditor = OLE2T(varAttValue.bstrVal);
-
-		pRootElement->getAttribute(CComBSTR(_T("editor_params")), varAttValue.Out());
-		if (varAttValue.vt == VT_BSTR) m_strConfigEditorParams = OLE2T(varAttValue.bstrVal);
+		GetAttribute(pRootElement, _T("shell"), m_strShell);
+		GetAttribute(pRootElement, _T("editor"), m_strConfigEditor);
+		GetAttribute(pRootElement, _T("editor_params"), m_strConfigEditorParams);
 		
 		pRootElement->get_children(&pColl);
 		if (!pColl) throw XmlException(TRUE);
-
+		
 		// get font settings
 		IXMLElementCollection*	pFontColl = NULL;
-		if (!SUCCEEDED(pColl->item(CComVariant(_T("font")), CComVariant(0), (IDispatch**)&pFontElement))) throw XmlException(FALSE);
-		if (pFontElement) {
-			if (!SUCCEEDED(pFontElement->get_children(&pFontColl))) throw XmlException(FALSE);
-
-			if (pFontColl) {
-				IXMLElement* pFontSubelement = NULL;
+		pFontElement = GetElement(pColl, _T("font"));
+		
+		if (pFontElement)
+			{
+				pFontColl = GetCollection(pFontElement);
 				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("size")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					pFontSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_dwFontSize = _ttoi(OLE2T(strText));
-				}
-				SAFERELEASE(pFontSubelement);
-
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("italic")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					pFontSubelement->get_text(strText.Out());
-					m_bItalic = !_tcsicmp(OLE2T(strText), _T("true"));
-				}
-				SAFERELEASE(pFontSubelement);
+				if (pFontColl) 
+					{
+						IXMLElement* pFontSubelement = GetElement(pFontColl, _T("size"));
+						
+						if (pFontSubelement) 
+							{
+								pFontSubelement->get_text(strText.Out());
+								if (strText.Length() > 0) m_dwFontSize = _ttoi(OLE2T(strText));
+							}
+						SAFERELEASE(pFontSubelement);
+						
+						pFontSubelement = GetElement(pFontColl, _T("italic"));
+						if (pFontSubelement) 
+							{
+								pFontSubelement->get_text(strText.Out());
+								m_bItalic = !_tcsicmp(OLE2T(strText), _T("true"));
+							}
+						SAFERELEASE(pFontSubelement);
 				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("bold")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					pFontSubelement->get_text(strText.Out());
-					m_bBold = !_tcsicmp(OLE2T(strText), _T("true"));
-				}
-				SAFERELEASE(pFontSubelement);
-				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("name")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					pFontSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_strFontName = OLE2T(strText);
-				}
-				SAFERELEASE(pFontSubelement);
-				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("shadow")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					BYTE r = 0;
-					BYTE g = 0;
-					BYTE b = 0;
-
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					
-					m_shadowColor = RGB(r, g, b);
-
-					pFontSubelement->getAttribute(CComBSTR(_T("distance")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_shadowDistance = _ttoi(OLE2T(varAttValue.bstrVal));
-				}
-
-
-				
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("color")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-					BYTE r = 0;
-					BYTE g = 0;
-					BYTE b = 0;
-					
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-					varAttValue.Clear();
-					pFontSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-					
-					m_bUseFontColor = TRUE;
-					m_crFontColor = RGB(r, g, b);
-				}
-				SAFERELEASE(pFontSubelement);
-
-				// get font color mapping
-				if (!SUCCEEDED(pFontColl->item(CComVariant(_T("colors")), CComVariant(0), (IDispatch**)&pFontSubelement))) throw XmlException(FALSE);
-				if (pFontSubelement) {
-
-					IXMLElementCollection*	pColorsColl = NULL;
-					
-					if (!SUCCEEDED(pFontSubelement->get_children(&pColorsColl))) throw XmlException(FALSE);
-					
-					if (pColorsColl) {
-
-						for (int i = 0; i < 16; ++i) {
-							IXMLElement* pColorSubelement = NULL;
-							TCHAR szColorName[32];
-
-							_sntprintf(szColorName, sizeof(szColorName)/sizeof(TCHAR), _T("color_%02i"), i);
-							
-							if (!SUCCEEDED(pColorsColl->item(CComVariant(szColorName), CComVariant(0), (IDispatch**)&pColorSubelement))) throw XmlException(FALSE);
-							if (pColorSubelement) {
-
+						pFontSubelement = GetElement(pFontColl, _T("bold"));
+						if (pFontSubelement) 
+							{
+								pFontSubelement->get_text(strText.Out());
+								m_bBold = !_tcsicmp(OLE2T(strText), _T("true"));
+							}
+						SAFERELEASE(pFontSubelement);
+						
+						pFontSubelement = GetElement(pFontColl, _T("name"));
+						if (pFontSubelement) 
+							{
+								pFontSubelement->get_text(strText.Out());
+								if (strText.Length() > 0) m_strFontName = OLE2T(strText);
+							}
+						SAFERELEASE(pFontSubelement);
+						
+						pFontSubelement = GetElement(pFontColl, _T("shadow"));
+						if (pFontSubelement) 
+							{
 								BYTE r = 0;
 								BYTE g = 0;
 								BYTE b = 0;
 								
-								varAttValue.Clear();
-								pColorSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-								if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-								varAttValue.Clear();
-								pColorSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-								if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-								varAttValue.Clear();
-								pColorSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-								if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
+								GetAttribute(pFontSubelement, _T("r"), r);
+								GetAttribute(pFontSubelement, _T("g"), g);
+								GetAttribute(pFontSubelement, _T("b"), b);
 								
-								Console::m_arrConsoleColors[i] = RGB(r, g, b);
+								m_shadowColor = RGB(r, g, b);
+								
+								GetAttribute(pFontSubelement, _T("distance"), m_shadowDistance);
 							}
+						
+						pFontSubelement = GetElement(pFontColl, _T("color"));
+						if (pFontSubelement) 
+							{
+								BYTE r = 0;
+								BYTE g = 0;
+								BYTE b = 0;
+								
+								GetAttribute(pFontSubelement, _T("r"), r);
+								GetAttribute(pFontSubelement, _T("g"), g);
+								GetAttribute(pFontSubelement, _T("b"), b);
+								
+								m_bUseFontColor = TRUE;
+								m_crFontColor = RGB(r, g, b);
+							}
+						SAFERELEASE(pFontSubelement);
 
-							SAFERELEASE(pColorSubelement);
-						}
-					}
-					SAFERELEASE(pColorsColl);
-				}
-				SAFERELEASE(pFontSubelement);
-			}				
-			SAFERELEASE(pFontColl);
-		}
-	
+						// get font color mapping
+						pFontSubelement = GetElement(pFontColl, _T("colors"));
+						if (pFontSubelement) 
+							{
+								IXMLElementCollection* pColorsColl = NULL;
+								pColorsColl = GetCollection(pFontSubelement);
+								
+								if (pColorsColl) 
+									{
+										for (int i = 0; i < 16; ++i) 
+											{
+												IXMLElement* pColorSubelement = NULL;
+												TCHAR szColorName[32];
+												
+												_sntprintf(szColorName,
+																	 sizeof(szColorName)/sizeof(TCHAR),
+																	 _T("color_%02i"), i);
+												
+												pColorSubelement = GetElement(pColorsColl, szColorName);
+												if (pColorSubelement)
+													{
+														BYTE r = 0;
+														BYTE g = 0;
+														BYTE b = 0;
+														
+														GetAttribute(pColorSubelement, _T("r"), r);
+														GetAttribute(pColorSubelement, _T("g"), g);
+														GetAttribute(pColorSubelement, _T("b"), b);
+														
+														Console::m_arrConsoleColors[i] = RGB(r, g, b);
+													}
+												
+												SAFERELEASE(pColorSubelement);
+											}
+									}
+								SAFERELEASE(pColorsColl);
+							}
+						SAFERELEASE(pFontSubelement);
+					}				
+				SAFERELEASE(pFontColl);
+			}
+		
 		// get position settings
 		IXMLElementCollection*	pPositionColl = NULL;
-		if (!SUCCEEDED(pColl->item(CComVariant(_T("position")), CComVariant(0), (IDispatch**)&pPositionElement))) throw XmlException(FALSE);
-		if (pPositionElement) {
-			if (!SUCCEEDED(pPositionElement->get_children(&pPositionColl))) throw XmlException(FALSE);
-			
-			if (pPositionColl) {
-				IXMLElement* pPositionSubelement = NULL;
+		
+		pPositionElement = GetElement(pColl, _T("position"));
+		if (pPositionElement) 
+			{
+				pPositionColl = GetCollection(pPositionElement);
+				if (pPositionColl) 
+					{
+						IXMLElement* pPositionSubelement = NULL;
+						
+						if (!m_bReloading)
+							{
+								pPositionSubelement = GetElement(pPositionColl, _T("x"));
+								
+								if (pPositionSubelement) 
+									{
+										pPositionSubelement->get_text(strText.Out());
+										if (strText.Length() > 0) m_nX = _ttoi(OLE2T(strText));
+									}
+								SAFERELEASE(pPositionSubelement);
+								
+								pPositionSubelement = GetElement(pPositionColl, _T("y"));
+								
+								if (pPositionSubelement) 
+									{
+										pPositionSubelement->get_text(strText.Out());
+										if (strText.Length() > 0) m_nY = _ttoi(OLE2T(strText));
+									}
+								SAFERELEASE(pPositionSubelement);
+							}
 				
-				if (!m_bReloading) {
-					if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("x")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-					if (pPositionSubelement) {
-						pPositionSubelement->get_text(strText.Out());
-						if (strText.Length() > 0) m_nX = _ttoi(OLE2T(strText));
+						pPositionSubelement = GetElement(pPositionColl, _T("docked"));
+						if (pPositionSubelement) 
+							{
+								pPositionSubelement->get_text(strText.Out());
+								strTempText = OLE2T(strText);
+								
+								if (!_tcsicmp(strTempText.c_str(), _T("top left"))) 
+									{
+										m_dwDocked = DOCK_TOP_LEFT;
+									} 
+								else if (!_tcsicmp(strTempText.c_str(), _T("top right"))) 
+									{
+										m_dwDocked = DOCK_TOP_RIGHT;
+									} 
+								else if (!_tcsicmp(strTempText.c_str(), _T("bottom right"))) 
+									{
+										m_dwDocked = DOCK_BOTTOM_RIGHT;
+									} 
+								else if (!_tcsicmp(strTempText.c_str(), _T("bottom left"))) 
+									{
+										m_dwDocked = DOCK_BOTTOM_LEFT;
+									} 
+								else 
+									{
+										m_dwDocked = DOCK_NONE;
+									}
+							}
+						SAFERELEASE(pPositionSubelement);
+						
+						pPositionSubelement = GetElement(pPositionColl, _T("snap_distance"));
+						if (pPositionSubelement) 
+							{
+								pPositionSubelement->get_text(strText.Out());
+								if (strText.Length() > 0) m_nSnapDst = _ttoi(OLE2T(strText));
+							}
+						SAFERELEASE(pPositionSubelement);
+						
+						pPositionSubelement = GetElement(pPositionColl, _T("z_order"));
+						if (pPositionSubelement) 
+							{
+								pPositionSubelement->get_text(strText.Out());
+								strTempText = OLE2T(strText);
+								
+								if (!_tcsicmp(strTempText.c_str(), _T("regular"))) 
+									{
+										m_dwCurrentZOrder = Z_ORDER_REGULAR;
+										m_dwOriginalZOrder = Z_ORDER_REGULAR;
+									} 
+								else if (!_tcsicmp(strTempText.c_str(), _T("on top"))) 
+									{
+										m_dwCurrentZOrder = Z_ORDER_ONTOP;
+										m_dwOriginalZOrder = Z_ORDER_ONTOP;
+									} 
+								else if (!_tcsicmp(strTempText.c_str(), _T("on bottom"))) 
+									{
+										m_dwCurrentZOrder = Z_ORDER_ONBOTTOM;
+										m_dwOriginalZOrder = Z_ORDER_ONBOTTOM;
+									} 
+								else
+									{
+										m_dwCurrentZOrder = Z_ORDER_REGULAR;
+										m_dwOriginalZOrder = Z_ORDER_REGULAR;
+									}
+							}
+						SAFERELEASE(pPositionSubelement);
 					}
-					SAFERELEASE(pPositionSubelement);
-					
-					if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("y")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-					if (pPositionSubelement) {
-						pPositionSubelement->get_text(strText.Out());
-						if (strText.Length() > 0) m_nY = _ttoi(OLE2T(strText));
-					}
-					SAFERELEASE(pPositionSubelement);
-				}
 				
-				if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("docked")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-				if (pPositionSubelement) {
-					pPositionSubelement->get_text(strText.Out());
-					strTempText = OLE2T(strText);
-					
-					if (!_tcsicmp(strTempText.c_str(), _T("top left"))) {
-						m_dwDocked = DOCK_TOP_LEFT;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("top right"))) {
-						m_dwDocked = DOCK_TOP_RIGHT;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("bottom right"))) {
-						m_dwDocked = DOCK_BOTTOM_RIGHT;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("bottom left"))) {
-						m_dwDocked = DOCK_BOTTOM_LEFT;
-					} else {
-						m_dwDocked = DOCK_NONE;
-					}
-				}
-				SAFERELEASE(pPositionSubelement);
-				
-				if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("snap_distance")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-				if (pPositionSubelement) {
-					pPositionSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_nSnapDst = _ttoi(OLE2T(strText));
-				}
-				SAFERELEASE(pPositionSubelement);
-				
-				if (!SUCCEEDED(pPositionColl->item(CComVariant(_T("z_order")), CComVariant(0), (IDispatch**)&pPositionSubelement))) throw XmlException(FALSE);
-				if (pPositionSubelement) {
-					pPositionSubelement->get_text(strText.Out());
-					strTempText = OLE2T(strText);
-					
-					if (!_tcsicmp(strTempText.c_str(), _T("regular"))) {
-						m_dwCurrentZOrder = Z_ORDER_REGULAR;
-						m_dwOriginalZOrder = Z_ORDER_REGULAR;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("on top"))) {
-						m_dwCurrentZOrder = Z_ORDER_ONTOP;
-						m_dwOriginalZOrder = Z_ORDER_ONTOP;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("on bottom"))) {
-						m_dwCurrentZOrder = Z_ORDER_ONBOTTOM;
-						m_dwOriginalZOrder = Z_ORDER_ONBOTTOM;
-					} else {
-						m_dwCurrentZOrder = Z_ORDER_REGULAR;
-						m_dwOriginalZOrder = Z_ORDER_REGULAR;
-					}
-				}
-				SAFERELEASE(pPositionSubelement);
+				SAFERELEASE(pPositionColl);
 			}
-			
-			SAFERELEASE(pPositionColl);
-		}
-
+		
 		// get appearance settings
 		IXMLElementCollection*	pAppearanceColl = NULL;
-		if (!SUCCEEDED(pColl->item(CComVariant(_T("appearance")), CComVariant(0), (IDispatch**)&pAppearanceElement))) throw XmlException(FALSE);
-		if (pAppearanceElement) {
-			if (!SUCCEEDED(pAppearanceElement->get_children(&pAppearanceColl))) throw XmlException(FALSE);
-			
-			if (pAppearanceColl) {
-				IXMLElement* pAppearanaceSubelement = NULL;
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("hide_console")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bHideConsole = TRUE;
-					} else {
-						m_bHideConsole = FALSE;
-					}
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("hide_console_timeout")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_dwHideConsoleTimeout = _ttoi(OLE2T(strText));
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("start_minimized")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bStartMinimized = TRUE;
-					} else {
-						m_bStartMinimized = FALSE;
-					}
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				IXMLElementCollection*	pScrollbarColl = NULL;
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("scrollbar")), CComVariant(0), (IDispatch**)&pScrollbarElement))) throw XmlException(FALSE);
-				if (pScrollbarElement) {
-					if (!SUCCEEDED(pScrollbarElement->get_children(&pScrollbarColl))) throw XmlException(FALSE);
-					
-					if (pScrollbarColl) {
-						IXMLElement* pScrollbarSubelement = NULL;
+		
+		pAppearanceElement = GetElement(pColl, _T("appearance"));
+		if (pAppearanceElement) 
+			{
+				pAppearanceColl = GetCollection(pAppearanceElement);
+				if (pAppearanceColl) 
+					{
+						IXMLElement* pAppearanaceSubelement = NULL;
 						
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("color")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							BYTE r = 0;
-							BYTE g = 0;
-							BYTE b = 0;
-							
-							pScrollbarSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-							pScrollbarSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-							pScrollbarSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-							
-							m_crScrollbarColor = RGB(r, g, b);
-						}
-						SAFERELEASE(pScrollbarSubelement);
+						pAppearanaceSubelement = GetElement(pAppearanceColl, _T("hide_console"));
 						
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("style")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							pScrollbarSubelement->get_text(strText.Out());
-							strTempText = OLE2T(strText);
-							
-							if (!_tcsicmp(strTempText.c_str(), _T("regular"))) {
-								m_nScrollbarStyle = FSB_REGULAR_MODE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("flat"))) {
-								m_nScrollbarStyle = FSB_FLAT_MODE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("encarta"))) {
-								m_nScrollbarStyle = FSB_ENCARTA_MODE;
+						if (pAppearanaceSubelement) 
+							{
+								pAppearanaceSubelement->get_text(strText.Out());
+								if (!_tcsicmp(OLE2T(strText), _T("true"))) 
+									{
+										m_bHideConsole = TRUE;
+									} 
+								else 
+									{
+										m_bHideConsole = FALSE;
+									}
 							}
-						}
-						SAFERELEASE(pScrollbarSubelement);
-
-
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("width")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							pScrollbarSubelement->get_text(strText.Out());
-							if (strText.Length() > 0) m_nScrollbarWidth = _ttoi(OLE2T(strText));
-						}
-						SAFERELEASE(pScrollbarSubelement);
+						SAFERELEASE(pAppearanaceSubelement);
 						
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("button_height")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							pScrollbarSubelement->get_text(strText.Out());
-							if (strText.Length() > 0) m_nScrollbarButtonHeight = _ttoi(OLE2T(strText));
-						}
-						SAFERELEASE(pScrollbarSubelement);
-
-						if (!SUCCEEDED(pScrollbarColl->item(CComVariant(_T("thumb_height")), CComVariant(0), (IDispatch**)&pScrollbarSubelement))) throw XmlException(FALSE);
-						if (pScrollbarSubelement) {
-							pScrollbarSubelement->get_text(strText.Out());
-							if (strText.Length() > 0) m_nScrollbarThunmbHeight = _ttoi(OLE2T(strText));
-						}
-						SAFERELEASE(pScrollbarSubelement);
-					}
-					SAFERELEASE(pScrollbarColl);
-				}
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("border")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true")) || !_tcsicmp(OLE2T(strText), _T("regular"))) {
-						m_dwWindowBorder = BORDER_REGULAR;
-					} else if (!_tcsicmp(OLE2T(strText), _T("thin"))) {
-						m_dwWindowBorder = BORDER_THIN;
-					} else {
-						m_dwWindowBorder = BORDER_NONE;
-					}
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("inside_border")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_nInsideBorder = _ttoi(OLE2T(strText));
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-				
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("taskbar_button")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("hide"))) {
-						m_dwTaskbarButton = TASKBAR_BUTTON_HIDE;
-					} else if (!_tcsicmp(OLE2T(strText), _T("tray"))) { 
-						m_dwTaskbarButton = TASKBAR_BUTTON_TRAY;
-					} else {
-						m_dwTaskbarButton = TASKBAR_BUTTON_NORMAL;
-					}
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("size")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("rows")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_dwRows = _ttoi(OLE2T(varAttValue.bstrVal));
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("columns")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_dwColumns = _ttoi(OLE2T(varAttValue.bstrVal));
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("buffer_rows")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) {
-						m_dwBufferRows = _ttoi(OLE2T(varAttValue.bstrVal));
-						m_bUseTextBuffer = TRUE;
-					} else {
-						m_dwBufferRows = m_dwRows;
-					}
-					if (m_dwBufferRows < m_dwRows) m_dwBufferRows = m_dwRows;
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-				
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("transparency")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("alpha")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_byAlpha = (BYTE)_ttoi(OLE2T(varAttValue.bstrVal));
-					pAppearanaceSubelement->getAttribute(CComBSTR(_T("inactive_alpha")), varAttValue.Out());
-					if (varAttValue.vt == VT_BSTR) m_byInactiveAlpha = (BYTE)_ttoi(OLE2T(varAttValue.bstrVal));
-
-					pAppearanaceSubelement->get_text(strText.Out());
-					strTempText = OLE2T(strText);
-					
-					if (!_tcsicmp(strTempText.c_str(), _T("none"))) {
-						m_dwTransparency = TRANSPARENCY_NONE;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("alpha"))) {
-						m_dwTransparency = TRANSPARENCY_ALPHA;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("color key"))) {
-						m_dwTransparency = TRANSPARENCY_COLORKEY;
-					} else if (!_tcsicmp(strTempText.c_str(), _T("fake"))) {
-						m_dwTransparency = TRANSPARENCY_FAKE;
-					}
-					
-				}
-				SAFERELEASE(pAppearanaceSubelement);
-				
+						pAppearanaceSubelement = GetElement(pAppearanceColl, _T("hide_console_timeout"));
+						if (pAppearanaceSubelement) 
+							{
+								pAppearanaceSubelement->get_text(strText.Out());
+								if (strText.Length() > 0) m_dwHideConsoleTimeout = _ttoi(OLE2T(strText));
+							}
+						SAFERELEASE(pAppearanaceSubelement);
+						
+						pAppearanaceSubelement = GetElement(pAppearanceColl, _T("start_minimized"));
+						if (pAppearanaceSubelement) 
+							{
+								pAppearanaceSubelement->get_text(strText.Out());
+								if (!_tcsicmp(OLE2T(strText), _T("true"))) 
+									{
+										m_bStartMinimized = TRUE;
+									} 
+								else
+									{
+										m_bStartMinimized = FALSE;
+									}
+							}
+						SAFERELEASE(pAppearanaceSubelement);
+						
+						IXMLElementCollection*	pScrollbarColl = NULL;
+						pScrollbarElement = GetElement(pAppearanceColl, _T("scrollbar"));
+						if (pScrollbarElement) 
+							{
+								pScrollbarColl = GetCollection(pScrollbarElement);
+								
+								if (pScrollbarColl) 
+									{
+										IXMLElement* pScrollbarSubelement = NULL;
+										
+										pScrollbarSubelement = GetElement(pScrollbarColl, _T("color"));
+										if (pScrollbarSubelement) 
+											{
+												BYTE r = 0;
+												BYTE g = 0;
+												BYTE b = 0;
+												
+												GetAttribute(pScrollbarSubelement, _T("r"), r);
+												GetAttribute(pScrollbarSubelement, _T("g"), g);
+												GetAttribute(pScrollbarSubelement, _T("b"), b);
+												
+												m_crScrollbarColor = RGB(r, g, b);
+											}
+										SAFERELEASE(pScrollbarSubelement);
+										
+										pScrollbarSubelement = GetElement(pScrollbarColl, _T("style"));
+										if (pScrollbarSubelement) 
+											{
+												pScrollbarSubelement->get_text(strText.Out());
+												strTempText = OLE2T(strText);
+												
+												if (!_tcsicmp(strTempText.c_str(), _T("regular"))) 
+													{
+														m_nScrollbarStyle = FSB_REGULAR_MODE;
+													} 
+												else if (!_tcsicmp(strTempText.c_str(), _T("flat"))) 
+													{
+														m_nScrollbarStyle = FSB_FLAT_MODE;
+													} 
+												else if (!_tcsicmp(strTempText.c_str(), _T("encarta"))) 
+													{
+														m_nScrollbarStyle = FSB_ENCARTA_MODE;
+													}
+											}
+										SAFERELEASE(pScrollbarSubelement);
+										
+										pScrollbarSubelement = GetElement(pScrollbarColl, _T("width"));
+										if (pScrollbarSubelement) 
+											{
+												pScrollbarSubelement->get_text(strText.Out());
+												if (strText.Length() > 0) m_nScrollbarWidth = _ttoi(OLE2T(strText));
+											}
+										SAFERELEASE(pScrollbarSubelement);
+										
+										pScrollbarSubelement = GetElement(pScrollbarColl, _T("button_height"));
+										if (pScrollbarSubelement) 
+											{
+												pScrollbarSubelement->get_text(strText.Out());
+												if (strText.Length() > 0) m_nScrollbarButtonHeight = _ttoi(OLE2T(strText));
+											}
+										SAFERELEASE(pScrollbarSubelement);
+										
+										pScrollbarSubelement = GetElement(pScrollbarColl, _T("thumb_height"));
+										if (pScrollbarSubelement) 
+											{
+												pScrollbarSubelement->get_text(strText.Out());
+												if (strText.Length() > 0) m_nScrollbarThunmbHeight = _ttoi(OLE2T(strText));
+											}
+										SAFERELEASE(pScrollbarSubelement);
+									}
+								SAFERELEASE(pScrollbarColl);
+							}
+						
+						pAppearanaceSubelement = GetElement(pAppearanceColl, _T("border"));
+						if (pAppearanaceSubelement) 
+							{
+								pAppearanaceSubelement->get_text(strText.Out());
+								if (!_tcsicmp(OLE2T(strText), _T("true")) 
+										|| !_tcsicmp(OLE2T(strText), _T("regular"))) 
+									{
+										m_dwWindowBorder = BORDER_REGULAR;
+									} 
+								else if (!_tcsicmp(OLE2T(strText), _T("thin"))) 
+									{
+										m_dwWindowBorder = BORDER_THIN;
+									} 
+								else
+									{
+										m_dwWindowBorder = BORDER_NONE;
+									}
+							}
+						SAFERELEASE(pAppearanaceSubelement);
+						
+						pAppearanaceSubelement = GetElement(pAppearanceColl, _T("inside_border"));
+						if (pAppearanaceSubelement) 
+							{
+								pAppearanaceSubelement->get_text(strText.Out());
+								if (strText.Length() > 0) m_nInsideBorder = _ttoi(OLE2T(strText));
+							}
+						SAFERELEASE(pAppearanaceSubelement);
+						
+						pAppearanaceSubelement = GetElement(pAppearanceColl, _T("taskbar_button"));
+						if (pAppearanaceSubelement) 
+							{
+								pAppearanaceSubelement->get_text(strText.Out());
+								if (!_tcsicmp(OLE2T(strText), _T("hide"))) 
+									{
+										m_dwTaskbarButton = TASKBAR_BUTTON_HIDE;
+									} 
+								else if (!_tcsicmp(OLE2T(strText), _T("tray"))) 
+									{ 
+										m_dwTaskbarButton = TASKBAR_BUTTON_TRAY;
+									} 
+								else
+									{
+										m_dwTaskbarButton = TASKBAR_BUTTON_NORMAL;
+									}
+							}
+						SAFERELEASE(pAppearanaceSubelement);
+						
+						pAppearanaceSubelement = GetElement(pAppearanceColl, _T("size"));
+						if (pAppearanaceSubelement) 
+							{
+								GetAttribute(pAppearanaceSubelement, _T("rows"), m_dwRows);
+								GetAttribute(pAppearanaceSubelement, _T("columns"), m_dwColumns);
+								
+								pAppearanaceSubelement->getAttribute(CComBSTR(_T("buffer_rows")), varAttValue.Out());
+								if (varAttValue.vt == VT_BSTR)
+									{
+										m_dwBufferRows = _ttoi(OLE2T(varAttValue.bstrVal));
+										m_bUseTextBuffer = TRUE;
+									} 
+								else
+									{
+										m_dwBufferRows = m_dwRows;
+									}
+								if (m_dwBufferRows < m_dwRows) m_dwBufferRows = m_dwRows;
+							}
+						SAFERELEASE(pAppearanaceSubelement);
+						
+						pAppearanaceSubelement = GetElement(pAppearanceColl, _T("transparency"));
+						if (pAppearanaceSubelement) 
+							{
+								GetAttribute(pAppearanaceSubelement, _T("alpha"), m_byAlpha);
+								GetAttribute(pAppearanaceSubelement, _T("inactive_alpha"), m_byInactiveAlpha);
+								
+								pAppearanaceSubelement->get_text(strText.Out());
+								strTempText = OLE2T(strText);
+								
+								if (!_tcsicmp(strTempText.c_str(), _T("none"))) 
+									{
+										m_dwTransparency = TRANSPARENCY_NONE;
+									} 
+								else if (!_tcsicmp(strTempText.c_str(), _T("alpha"))) 
+									{
+										m_dwTransparency = TRANSPARENCY_ALPHA;
+									} 
+								else if (!_tcsicmp(strTempText.c_str(), _T("color key"))) 
+									{
+										m_dwTransparency = TRANSPARENCY_COLORKEY;
+									} 
+								else if (!_tcsicmp(strTempText.c_str(), _T("fake"))) 
+									{
+										m_dwTransparency = TRANSPARENCY_FAKE;
+									}
+							}
+						SAFERELEASE(pAppearanaceSubelement);
+						
 				// get background settings
 				IXMLElementCollection*	pBackgroundColl = NULL;
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("background")), CComVariant(0), (IDispatch**)&pBackgroundElement))) throw XmlException(FALSE);
-				if (pBackgroundElement) {
-					if (!SUCCEEDED(pBackgroundElement->get_children(&pBackgroundColl))) throw XmlException(FALSE);
-					
-					if (pBackgroundColl) {
-						IXMLElement* pBackgroundSubelement = NULL;
-						
-						if (!SUCCEEDED(pBackgroundColl->item(CComVariant(_T("color")), CComVariant(0), (IDispatch**)&pBackgroundSubelement))) throw XmlException(FALSE);
-						if (pBackgroundSubelement) {
-							BYTE r = 0;
-							BYTE g = 0;
-							BYTE b = 0;
-							
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-							
-							m_crBackground = RGB(r, g, b);
-							m_bBkColorSet = TRUE;								
-						}
-						SAFERELEASE(pBackgroundSubelement);
-
-						if (!SUCCEEDED(pBackgroundColl->item(CComVariant(_T("tint")), CComVariant(0), (IDispatch**)&pBackgroundSubelement))) throw XmlException(FALSE);
-						if (pBackgroundSubelement) {
-							BYTE r = 0;
-							BYTE g = 0;
-							BYTE b = 0;
-							
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) m_byTintR = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) m_byTintG = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) m_byTintB = _ttoi(OLE2T(varAttValue.bstrVal));
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("opacity")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) m_byTintOpacity = _ttoi(OLE2T(varAttValue.bstrVal));
-							
-							if (m_byTintOpacity > 100) m_byTintOpacity = 50;
-							m_bTintSet = TRUE;								
-						}
-						SAFERELEASE(pBackgroundSubelement);
-						
-						if (!SUCCEEDED(pBackgroundColl->item(CComVariant(_T("image")), CComVariant(0), (IDispatch**)&pBackgroundSubelement))) throw XmlException(FALSE);
-						if (pBackgroundSubelement) {
-
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("style")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) {
-								if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("resize"))) {
-									m_dwBackgroundStyle = BACKGROUND_STYLE_RESIZE;
-								} else if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("center"))) {
-									m_dwBackgroundStyle = BACKGROUND_STYLE_CENTER;
-								} else if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("tile"))) {
-									m_dwBackgroundStyle = BACKGROUND_STYLE_TILE;
-								}
+				
+				pBackgroundElement = GetElement(pAppearanceColl, _T("background"));
+				if (pBackgroundElement) 
+					{
+						pBackgroundColl = GetCollection(pBackgroundElement);
+						if (pBackgroundColl) 
+							{
+								IXMLElement* pBackgroundSubelement = NULL;
+								
+								pBackgroundSubelement = GetElement(pBackgroundColl, _T("color"));
+								if (pBackgroundSubelement) 
+									{
+										BYTE r = 0;
+										BYTE g = 0;
+										BYTE b = 0;
+										
+										GetAttribute(pBackgroundSubelement, _T("r"), r);
+										GetAttribute(pBackgroundSubelement, _T("g"), g);
+										GetAttribute(pBackgroundSubelement, _T("b"), b);
+										
+										m_crBackground = RGB(r, g, b);
+										m_bBkColorSet = TRUE;								
+									}
+								SAFERELEASE(pBackgroundSubelement);
+								
+								pBackgroundSubelement = GetElement(pBackgroundColl, _T("tint"));
+								if (pBackgroundSubelement) 
+									{
+										GetAttribute(pBackgroundSubelement, _T("r"), m_byTintR);
+										GetAttribute(pBackgroundSubelement, _T("g"), m_byTintG);
+										GetAttribute(pBackgroundSubelement, _T("b"), m_byTintB);
+										
+										GetAttribute(pBackgroundSubelement, _T("opacity"), m_byTintOpacity);
+										
+										if (m_byTintOpacity > 100) m_byTintOpacity = 50;
+										m_bTintSet = TRUE;								
+									}
+								SAFERELEASE(pBackgroundSubelement);
+								
+								pBackgroundSubelement = GetElement(pBackgroundColl, _T("image"));
+								if (pBackgroundSubelement) 
+									{
+										pBackgroundSubelement->getAttribute(CComBSTR(_T("style")), varAttValue.Out());
+										if (varAttValue.vt == VT_BSTR) 
+											{
+												if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("resize"))) 
+													{
+														m_dwBackgroundStyle = BACKGROUND_STYLE_RESIZE;
+													} 
+												else if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("center"))) 
+													{
+														m_dwBackgroundStyle = BACKGROUND_STYLE_CENTER;
+													} 
+												else if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("tile"))) 
+													{
+														m_dwBackgroundStyle = BACKGROUND_STYLE_TILE;
+													}
+											}
+										
+										pBackgroundSubelement->getAttribute(CComBSTR(_T("relative")), varAttValue.Out());
+										if (varAttValue.vt == VT_BSTR)
+											{
+												if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("true"))) {
+													m_bRelativeBackground = TRUE;
+												} 
+												else
+													{
+														m_bRelativeBackground = FALSE;
+													}
+											}
+										
+										pBackgroundSubelement->getAttribute(CComBSTR(_T("extend")), varAttValue.Out());
+										if (varAttValue.vt == VT_BSTR)
+											{
+												if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("true"))) 
+													{
+														m_bExtendBackground = TRUE;
+													} 
+												else
+													{
+														m_bExtendBackground = FALSE;
+													}
+											}
+										
+										pBackgroundSubelement->get_text(strText.Out());
+										m_strBackgroundFile = OLE2T(strText);
+										m_bBitmapBackground = TRUE;
+									}
+								SAFERELEASE(pBackgroundSubelement);
 							}
-
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("relative")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) {
-								if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("true"))) {
-									m_bRelativeBackground = TRUE;
-								} else {
-									m_bRelativeBackground = FALSE;
-								}
-							}
-
-							pBackgroundSubelement->getAttribute(CComBSTR(_T("extend")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) {
-								if (!_tcsicmp(OLE2T(varAttValue.bstrVal), _T("true"))) {
-									m_bExtendBackground = TRUE;
-								} else {
-									m_bExtendBackground = FALSE;
-								}
-							}
-							
-							pBackgroundSubelement->get_text(strText.Out());
-							m_strBackgroundFile = OLE2T(strText);
-							m_bBitmapBackground = TRUE;
-						}
-						SAFERELEASE(pBackgroundSubelement);
+						SAFERELEASE(pBackgroundColl);
 					}
-					SAFERELEASE(pBackgroundColl);
-				}
 				
 				IXMLElementCollection*	pCursorColl = NULL;
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("cursor")), CComVariant(0), (IDispatch**)&pCursorElement))) throw XmlException(FALSE);
-				if (pCursorElement) {
-					if (!SUCCEEDED(pCursorElement->get_children(&pCursorColl))) throw XmlException(FALSE);
-					
-					if (pCursorColl) {
-						IXMLElement* pCursorSubelement = NULL;
-
-						if (!SUCCEEDED(pCursorColl->item(CComVariant(_T("color")), CComVariant(0), (IDispatch**)&pCursorSubelement))) throw XmlException(FALSE);
-						if (pCursorSubelement) {
-							BYTE r = 0;
-							BYTE g = 0;
-							BYTE b = 0;
-							
-							pCursorSubelement->getAttribute(CComBSTR(_T("r")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) r = _ttoi(OLE2T(varAttValue.bstrVal));
-							pCursorSubelement->getAttribute(CComBSTR(_T("g")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) g = _ttoi(OLE2T(varAttValue.bstrVal));
-							pCursorSubelement->getAttribute(CComBSTR(_T("b")), varAttValue.Out());
-							if (varAttValue.vt == VT_BSTR) b = _ttoi(OLE2T(varAttValue.bstrVal));
-							
-							m_crCursorColor = RGB(r, g, b);
-						}
-						SAFERELEASE(pCursorSubelement);
-						
-						if (!SUCCEEDED(pCursorColl->item(CComVariant(_T("style")), CComVariant(0), (IDispatch**)&pCursorSubelement))) throw XmlException(FALSE);
-						if (pCursorSubelement) {
-							pCursorSubelement->get_text(strText.Out());
-							strTempText = OLE2T(strText);
-							
-							if (!_tcsicmp(strTempText.c_str(), _T("none"))) {
-								m_dwCursorStyle = CURSOR_STYLE_NONE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("XTerm"))) {
-								m_dwCursorStyle = CURSOR_STYLE_XTERM;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("block"))) {
-								m_dwCursorStyle = CURSOR_STYLE_BLOCK;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("noblink block"))) {
-								m_dwCursorStyle = CURSOR_STYLE_NBBLOCK;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("pulse block"))) {
-								m_dwCursorStyle = CURSOR_STYLE_PULSEBLOCK;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("bar"))) {
-								m_dwCursorStyle = CURSOR_STYLE_BAR;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("console"))) {
-								m_dwCursorStyle = CURSOR_STYLE_CONSOLE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("noblink line"))) {
-								m_dwCursorStyle = CURSOR_STYLE_NBHLINE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("horizontal line"))) {
-								m_dwCursorStyle = CURSOR_STYLE_HLINE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("vertical line"))) {
-								m_dwCursorStyle = CURSOR_STYLE_VLINE;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("rect"))) {
-								m_dwCursorStyle = CURSOR_STYLE_RECT;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("noblink rect"))) {
-								m_dwCursorStyle = CURSOR_STYLE_NBRECT;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("pulse rect"))) {
-								m_dwCursorStyle = CURSOR_STYLE_PULSERECT;
-							} else if (!_tcsicmp(strTempText.c_str(), _T("fading block"))) {
-								m_dwCursorStyle = CURSOR_STYLE_FADEBLOCK;
-							}
-						}
-						SAFERELEASE(pCursorSubelement);
-					}
-					SAFERELEASE(pCursorColl);
-				}
 				
-				if (!SUCCEEDED(pAppearanceColl->item(CComVariant(_T("icon")), CComVariant(0), (IDispatch**)&pAppearanaceSubelement))) throw XmlException(FALSE);
-				if (pAppearanaceSubelement) {
-					pAppearanaceSubelement->get_text(strText.Out());
-					if (strText.Length() > 0) m_strIconFilename = OLE2T(strText);
-				}
+				pCursorElement = GetElement(pAppearanceColl, _T("cursor"));
+				if (pCursorElement) 
+					{
+						pCursorColl = GetCollection(pCursorElement);
+						
+						if (pCursorColl) 
+							{
+								IXMLElement* pCursorSubelement = NULL;
+								
+								pCursorSubelement = GetElement(pCursorColl, _T("color"));
+								if (pCursorSubelement) 
+									{
+										BYTE r = 0;
+										BYTE g = 0;
+										BYTE b = 0;
+										
+										GetAttribute(pCursorSubelement, _T("r"), r);
+										GetAttribute(pCursorSubelement, _T("g"), g);
+										GetAttribute(pCursorSubelement, _T("b"), b);
+										
+										m_crCursorColor = RGB(r, g, b);
+									}
+								SAFERELEASE(pCursorSubelement);
+								
+								pCursorSubelement = GetElement(pCursorColl, _T("style"));
+								if (pCursorSubelement) 
+									{
+										pCursorSubelement->get_text(strText.Out());
+										strTempText = OLE2T(strText);
+										
+										if (!_tcsicmp(strTempText.c_str(), _T("none"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_NONE;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("XTerm"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_XTERM;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("block"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_BLOCK;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("noblink block"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_NBBLOCK;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("pulse block"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_PULSEBLOCK;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("bar"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_BAR;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("console"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_CONSOLE;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("noblink line"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_NBHLINE;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("horizontal line"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_HLINE;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("vertical line"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_VLINE;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("rect"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_RECT;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("noblink rect"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_NBRECT;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("pulse rect"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_PULSERECT;
+											} 
+										else if (!_tcsicmp(strTempText.c_str(), _T("fading block"))) 
+											{
+												m_dwCursorStyle = CURSOR_STYLE_FADEBLOCK;
+											}
+									}
+								SAFERELEASE(pCursorSubelement);
+							}
+						SAFERELEASE(pCursorColl);
+					}
+				
+				pAppearanaceSubelement = GetElement(pAppearanceColl, _T("icon"));
+				if (pAppearanaceSubelement) 
+					{
+						pAppearanaceSubelement->get_text(strText.Out());
+						if (strText.Length() > 0) m_strIconFilename = OLE2T(strText);
+					}
 				SAFERELEASE(pAppearanaceSubelement);
 				
+					}
+				SAFERELEASE(pAppearanceColl);
 			}
-			SAFERELEASE(pAppearanceColl);
-		}
-
+		
 		// get behaviour settings
 		IXMLElementCollection*	pBehaviorColl = NULL;
-		if (!SUCCEEDED(pColl->item(CComVariant(_T("behaviour")), CComVariant(0), (IDispatch**)&pBehaviorElement))) {
-			if (!SUCCEEDED(pColl->item(CComVariant(_T("behavior")), CComVariant(0), (IDispatch**)&pBehaviorElement))) throw XmlException(FALSE);
-		}
-
-		if (pBehaviorElement) {
-			if (!SUCCEEDED(pBehaviorElement->get_children(&pBehaviorColl))) throw XmlException(FALSE);
-			
-			if (pBehaviorColl) {
-				IXMLElement* pBehaviourSubelement = NULL;
-				
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("mouse_drag")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bMouseDragable = TRUE;
-					} else {
-						m_bMouseDragable = FALSE;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-				
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("copy_on_select")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bCopyOnSelect = TRUE;
-					} else {
-						m_bCopyOnSelect = FALSE;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-				
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("inverse_shift")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bInverseShift = TRUE;
-					} else {
-						m_bInverseShift = FALSE;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-				
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("reload_new_config")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("yes"))) {
-						m_dwReloadNewConfig = RELOAD_NEW_CONFIG_YES;
-					} else if (!_tcsicmp(OLE2T(strText), _T("no"))) {
-						m_dwReloadNewConfig = RELOAD_NEW_CONFIG_NO;
-					} else {
-						m_dwReloadNewConfig = RELOAD_NEW_CONFIG_PROMPT;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-
-				if (!SUCCEEDED(pBehaviorColl->item(CComVariant(_T("disable_menu")), CComVariant(0), (IDispatch**)&pBehaviourSubelement))) throw XmlException(FALSE);
-				if (pBehaviourSubelement) {
-					pBehaviourSubelement->get_text(strText.Out());
-					if (!_tcsicmp(OLE2T(strText), _T("true"))) {
-						m_bPopupMenuDisabled = TRUE;
-					} else {
-						m_bPopupMenuDisabled = FALSE;
-					}
-				}
-				SAFERELEASE(pBehaviourSubelement);
-				
+		
+		pBehaviorElement = GetElement(pColl, _T("behaviour"));
+		if (! pBehaviorElement)
+			{
+				pBehaviorElement = GetElement(pColl, _T("behavior"));
 			}
-			SAFERELEASE(pBehaviorColl);
-		}
+		
+		if (pBehaviorElement) 
+			{
+				pBehaviorColl = GetCollection(pBehaviorElement);
+				
+				if (pBehaviorColl) 
+					{
+						IXMLElement* pBehaviourSubelement = NULL;
+						
+						pBehaviourSubelement = GetElement(pBehaviorColl, _T("mouse_drag"));
+						if (pBehaviourSubelement) 
+							{
+								pBehaviourSubelement->get_text(strText.Out());
+								if (!_tcsicmp(OLE2T(strText), _T("true"))) 
+									{
+										m_bMouseDragable = TRUE;
+									} 
+								else 
+									{
+										m_bMouseDragable = FALSE;
+									}
+							}
+						SAFERELEASE(pBehaviourSubelement);
+						
+						pBehaviourSubelement = GetElement(pBehaviorColl, _T("copy_on_select"));
+						if (pBehaviourSubelement) 
+							{
+								pBehaviourSubelement->get_text(strText.Out());
+								if (!_tcsicmp(OLE2T(strText), _T("true"))) 
+									{
+										m_bCopyOnSelect = TRUE;
+									} 
+								else
+									{
+										m_bCopyOnSelect = FALSE;
+									}
+							}
+						SAFERELEASE(pBehaviourSubelement);
+						
+						pBehaviourSubelement = GetElement(pBehaviorColl, _T("inverse_shift"));
+						if (pBehaviourSubelement) 
+							{
+								pBehaviourSubelement->get_text(strText.Out());
+								if (!_tcsicmp(OLE2T(strText), _T("true"))) 
+									{
+										m_bInverseShift = TRUE;
+									} 
+								else
+									{
+										m_bInverseShift = FALSE;
+									}
+							}
+						SAFERELEASE(pBehaviourSubelement);
+						
+						pBehaviourSubelement = GetElement(pBehaviorColl, _T("reload_new_config"));
+						if (pBehaviourSubelement) 
+							{
+								pBehaviourSubelement->get_text(strText.Out());
+								if (!_tcsicmp(OLE2T(strText), _T("yes")))
+									{
+										m_dwReloadNewConfig = RELOAD_NEW_CONFIG_YES;
+									} 
+								else if (!_tcsicmp(OLE2T(strText), _T("no"))) 
+									{
+										m_dwReloadNewConfig = RELOAD_NEW_CONFIG_NO;
+									} 
+								else
+									{
+										m_dwReloadNewConfig = RELOAD_NEW_CONFIG_PROMPT;
+									}
+							}
+						SAFERELEASE(pBehaviourSubelement);
+						
+						pBehaviourSubelement = GetElement(pBehaviorColl, _T("disable_menu"));
+						if (pBehaviourSubelement) 
+							{
+								pBehaviourSubelement->get_text(strText.Out());
+								if (!_tcsicmp(OLE2T(strText), _T("true"))) 
+									{
+										m_bPopupMenuDisabled = TRUE;
+									} 
+								else
+									{
+										m_bPopupMenuDisabled = FALSE;
+									}
+							}
+						SAFERELEASE(pBehaviourSubelement);
+						
+					}
+				SAFERELEASE(pBehaviorColl);
+			}
 		
 		bRet = TRUE;
-
-	} catch (const XmlException& e) {
-		bRet = e.m_bRet;
-	}
-
+		
+	} 
+	catch (const XmlException& e) 
+		{
+			bRet = e.m_bRet;
+		}
+	catch (XmlException* e)
+		{
+			bRet = e->m_bRet;
+			delete e;
+		}
+	
 	SAFERELEASE(pBehaviorElement);
 	SAFERELEASE(pCursorElement);
 	SAFERELEASE(pBackgroundElement);
@@ -754,27 +957,33 @@ BOOL Console::GetOptions()
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::EditConfigFile() {
-
+void Console::EditConfigFile() 
+{
 	// prepare editor parameters
 	tstring strParams(m_strConfigEditorParams);
-
-	if (strParams.length() == 0) {
-		// no params, just use the config file
-		strParams = m_strConfigFile;
-	} else {
-		int nPos = strParams.find(_T("%f"));
-
-		if (nPos == tstring::npos) {
-			// no '%f' in editor params, concatenate config file name
-			strParams += _T(" ");
-			strParams += m_strConfigFile;
-		} else {
-			// replace '%f' with config file name
-			strParams = strParams.replace(nPos, 2, m_strConfigFile);
+	
+	if (strParams.empty()) 
+		{
+			// no params, just use the config file
+			strParams = m_strConfigFile;
+		} 
+	else
+		{
+			size_t nPos = strParams.find(_T("%f"));
+			
+			if (nPos == tstring::npos) 
+				{
+					// no '%f' in editor params, concatenate config file name
+					strParams += _T(" ");
+					strParams += m_strConfigFile;
+				} 
+			else
+				{
+					// replace '%f' with config file name
+					strParams = strParams.replace(nPos, 2, m_strConfigFile);
+				}
 		}
-	}
-
+	
 	// start editor
 	::ShellExecute(NULL, NULL, m_strConfigEditor.c_str(), strParams.c_str(), NULL, SW_SHOWNORMAL);
 }

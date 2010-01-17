@@ -85,7 +85,7 @@ BOOL Console::SetTrayIcon(DWORD dwMessage)
 #endif
 		}
 	
-	_tcscpy_s(tnd.szTip, sizeof(tnd.szTip), strToolTip.c_str());
+	_tcscpy_s(tnd.szTip, sizeof(tnd.szTip)/sizeof(TCHAR), strToolTip.c_str());
 	return ::Shell_NotifyIcon(dwMessage, &tnd);
 }
 

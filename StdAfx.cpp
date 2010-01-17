@@ -28,7 +28,6 @@
 //	stdafx.obj will contain the pre-compiled type information
 
 #include "stdafx.h"
-#include "strsafe.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // Global variables
@@ -92,7 +91,7 @@ void Trace(const TCHAR* pszFormat, ...)
 	va_list	vaList;
 	
 	va_start(vaList, pszFormat);
-	_vstprintf_s(szOutput, sizeof(szOutput), pszFormat, vaList);
+	_vstprintf_s(szOutput, sizeof(szOutput)/sizeof(TCHAR), pszFormat, vaList);
 	::OutputDebugString(szOutput);
 }
 

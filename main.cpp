@@ -137,7 +137,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			}
 		} else if (szConfigFile[0] == 0x0) {
 			// config file
-			_tcscpy_s(szConfigFile, sizeof(szConfigFile), szTmp);
+			_tcscpy_s(szConfigFile, sizeof(szConfigFile)/sizeof(TCHAR), szTmp);
 		}
 
 	}

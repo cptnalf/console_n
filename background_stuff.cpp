@@ -210,7 +210,7 @@ void Console::CreateBackgroundBitmap()
 					::ZeroMemory(szData, sizeof(szData));
 					::RegQueryValueEx(hkeyColors, _T("Background"), NULL, NULL, (BYTE*)szData, &dwDataSize);
 					
-					_stscanf(szData, _T("%i %i %i"), &r, &g, &b);
+					_stscanf_s(szData, _T("%i %i %i"), &r, &g, &b);
 					crBackground = RGB(r, g, b);
 					
 					::RegCloseKey(hkeyColors);
@@ -307,8 +307,12 @@ void Console::CreateBackgroundBitmap()
 
 /////////////////////////////////////////////////////////////////////////////
 
-BOOL CALLBACK Console::BackgroundEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
-
+BOOL CALLBACK Console::BackgroundEnumProc(HMONITOR hMonitor, HDC hdcMonitor, 
+																					LPRECT lprcMonitor, LPARAM dwData) 
+{
+	UNREFERENCED_PARAMETER(hdcMonitor);
+	UNREFERENCED_PARAMETER(hMonitor);
+	
 	IMAGE_DATA* pImageData = (IMAGE_DATA*)dwData;
 
 	DWORD	dwDisplayWidth	= lprcMonitor->right - lprcMonitor->left;

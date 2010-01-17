@@ -90,22 +90,27 @@ BOOL CAboutDlg::DoModal()
 
 INT_PTR CALLBACK CAboutDlg::DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	switch (uMsg) {
+	UNREFERENCED_PARAMETER(lParam);
+
+	switch (uMsg) 
+		{
 		case WM_INITDIALOG:
 			return TRUE;
 
 		case WM_COMMAND:
-			switch (LOWORD(wParam)) {
+			switch (LOWORD(wParam))
+				{
 				case IDOK:
 				case IDCANCEL:
-					if (HIWORD(wParam) == BN_CLICKED) {
-						::EndDialog(hwndDlg, MB_OK);
-						return TRUE;
-					}
+					if (HIWORD(wParam) == BN_CLICKED)
+						{
+							::EndDialog(hwndDlg, MB_OK);
+							return TRUE;
+						}
 					break;
-			}
-	}
-			
+				}
+		}
+	
 	return 0;
 }
 
@@ -115,18 +120,4 @@ INT_PTR CALLBACK CAboutDlg::DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, L
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

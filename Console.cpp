@@ -47,7 +47,6 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-
 /////////////////////////////////////////////////////////////////////////////
 // Console class
 
@@ -929,7 +928,7 @@ BOOL Console::StartShellProcess()
 	::AllocConsole();
 	
 	// we use this to avoid possible problems with multiple console instances running
-	_stprintf_s(szConsoleTitle, _T("%i"), ::GetCurrentThreadId());
+	_sntprintf(szConsoleTitle, sizeof(szConsoleTitle)/sizeof(TCHAR), _T("%i"), ::GetCurrentThreadId());
 	::SetConsoleTitle(szConsoleTitle);
 	m_hStdOut	= ::GetStdHandle(STD_OUTPUT_HANDLE);
 	while ((m_hWndConsole = ::FindWindow(NULL, szConsoleTitle)) == NULL) ::Sleep(50);
@@ -1227,9 +1226,12 @@ void Console::UpdateConfigFilesSubmenu()
 			MENUITEMINFO	mii;
 			TCHAR			szFilename[MAX_PATH];
 		
-			_sntprintf(szFilename, MAX_PATH, _T("%s"),
-								 (strConfigFileDir + tstring(wfd.cFileName)).c_str());
-		
+			_sntprintf(szFilename, 
+								 sizeof(szFilename)/sizeof(TCHAR), 
+								 _T("%s%s"),
+								 strConfigFileDir.c_str(),
+								 wfd.cFileName);
+			
 			::ZeroMemory(&mii, sizeof(MENUITEMINFO));
 			mii.cbSize		= sizeof(MENUITEMINFO);
 			mii.fMask		= MIIM_TYPE | MIIM_ID | MIIM_STATE;
@@ -1272,7 +1274,7 @@ void Console::ShowReadmeFile()
 		} 
 	else
 		{
-			int nPos = strParams.find(_T("%f"));
+			size_t nPos = strParams.find(_T("%f"));
 		
 			if (nPos == tstring::npos)
 				{

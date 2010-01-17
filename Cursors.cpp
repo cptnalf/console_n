@@ -780,24 +780,34 @@ void FadeBlockCursor::Draw(LPRECT pRect) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void FadeBlockCursor::PrepareNext() {
-
-	if (g_bWin2000){
-		if (m_bfn.SourceConstantAlpha < ALPHA_STEP) {
-			m_nStep = ALPHA_STEP;
-		} else if ((DWORD)m_bfn.SourceConstantAlpha + ALPHA_STEP > 255) {
-			m_nStep = -ALPHA_STEP;
+void FadeBlockCursor::PrepareNext() 
+{
+	
+	if (g_bWin2000)
+		{
+			if (m_bfn.SourceConstantAlpha < ALPHA_STEP) 
+				{
+					m_nStep = ALPHA_STEP;
+				} 
+			else if ((DWORD)m_bfn.SourceConstantAlpha + ALPHA_STEP > 255) 
+				{
+					m_nStep = -ALPHA_STEP;
+				}
+			
+			m_bfn.SourceConstantAlpha = (unsigned char)((int)m_bfn.SourceConstantAlpha + m_nStep);
+		} 
+	else
+		{
+			if (m_nIndex == 0) 
+				{
+					m_nStep = 1;
+				} 
+			else if (m_nIndex == (FADE_STEPS)) 
+				{
+					m_nStep = -1;
+				}
+			m_nIndex += m_nStep;
 		}
-		
-		m_bfn.SourceConstantAlpha += m_nStep;
-	} else {
-		if (m_nIndex == 0) {
-			m_nStep = 1;
-		} else if (m_nIndex == (FADE_STEPS)) {
-			m_nStep = -1;
-		}
-		m_nIndex += m_nStep;
-	}
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -52,6 +52,13 @@ public:
 		
 	// holds the window title (default title, or the one from the config file)
 	tstring	windowTitle() const { return m_strWindowTitle; }
+	void setWindowTitle(const TCHAR* newTitle)
+	{
+	 	if (newTitle && _tcslen(newTitle) > 0)
+			{
+				m_strWindowTitle = newTitle;
+			}
+	}
 	
 	// font data
 	tstring	fontName() const { return m_strFontName; }

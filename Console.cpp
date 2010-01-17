@@ -77,7 +77,6 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 	, m_hbmpWindowOld(NULL)
 	, m_hBkBrush(NULL)
 	, m_hSysMenu(NULL)
-	, m_strWindowTitleDefault(_tcslen(pszConsoleTitle) == 0 ? _T("console") : pszConsoleTitle)
 	, m_hFont(NULL)
 	, m_hFontOld(NULL)
 	, m_hdcBackground(NULL)
@@ -106,6 +105,7 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 	
 	_settings->setShellCmdLine(pszShellCmdLine);
 	_settings->setConfigFile(GetFullFilename(pszConfigFile));
+	_settings->setWindowTitle(pszConsoleTitle);
 
 	if (!_tcsicmp(pszReloadNewConfig, _T("yes"))) 
 		{
@@ -184,8 +184,8 @@ void Console::_resetVars()
 	m_hBigIcon				= NULL;
 	m_hPopupMenu			= NULL;
 	m_hConfigFilesMenu		= NULL;
-	m_strWindowTitleCurrent	= m_strWindowTitleDefault;
-
+	m_strWindowTitleCurrent.clear();
+	
 	m_nWindowWidth			= 0;
 	m_nWindowHeight			= 0;
 	m_nXBorderSize			= 0;
@@ -335,7 +335,6 @@ BOOL Console::RegisterWindowClasses()
 
 BOOL Console::SetupMenus() 
 {
-	
 	MENUITEMINFO	mii;
 	
 	// setup popup menu
@@ -832,10 +831,7 @@ void Console::SetWindowSizeAndPosition()
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::DestroyCursor() 
-{
-	if (m_pCursor) DEL_OBJ(m_pCursor);
-}
+void Console::DestroyCursor() { if (m_pCursor) DEL_OBJ(m_pCursor); }
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -844,39 +840,26 @@ void Console::DestroyCursor()
 
 BOOL Console::StartShellProcess() 
 {
-	
-	if (_settings->shell().empty()) 
-		{
-			TCHAR	szComspec[MAX_PATH];
-		
-			if (::GetEnvironmentVariable(_T("COMSPEC"), szComspec, MAX_PATH) > 0) 
-				{
-					_settings->setShell( szComspec);
-				} 
-			else
-				{
-					_settings->setShell( _T("cmd.exe"));
-				}
-		}
-
 	tstring	strShellCmdLine(_settings->shell());
 	if (! _settings->shellCmdLine().empty()) 
 		{
 			strShellCmdLine += _T(" ");
 			strShellCmdLine += _settings->shellCmdLine();
 		}
-
-//	strShellCmdLine = "cmd.exe";
 	
 	// create the console window
 	TCHAR	szConsoleTitle[MAX_PATH];
 	::AllocConsole();
 	
 	// we use this to avoid possible problems with multiple console instances running
-	_sntprintf(szConsoleTitle, sizeof(szConsoleTitle)/sizeof(TCHAR), _T("%i"), ::GetCurrentThreadId());
+	_sntprintf(szConsoleTitle, sizeof(szConsoleTitle)/sizeof(TCHAR), 
+						 _T("%i"), ::GetCurrentThreadId());
+	
 	::SetConsoleTitle(szConsoleTitle);
 	m_hStdOut	= ::GetStdHandle(STD_OUTPUT_HANDLE);
-	while ((m_hWndConsole = ::FindWindow(NULL, szConsoleTitle)) == NULL) ::Sleep(50);
+	while ((m_hWndConsole = ::FindWindow(NULL, szConsoleTitle)) == NULL)
+		{ ::Sleep(50); }
+	
 	::SetConsoleTitle(m_strWinConsoleTitle.c_str());
 	
 	// this is a little hack needed to support columns greater than standard 80
@@ -1082,8 +1065,8 @@ BOOL Console::HandleMenuCommand(unsigned int dwID)
 		}
 	
 	// check if it's one of config file submenu items
-	if ((dwID >= ID_FIRST_XML_FILE) &&
-			(dwID <= ID_LAST_XML_FILE)) 
+	if ((dwID >= ID_FIRST_XML_FILE) 
+			&& (dwID <= ID_LAST_XML_FILE)) 
 		{
 			TCHAR	szFilename[MAX_PATH];
 			::ZeroMemory(szFilename, sizeof(szFilename));
@@ -1120,9 +1103,11 @@ BOOL Console::HandleMenuCommand(unsigned int dwID)
 void Console::UpdateOnTopMenuItem() 
 {
 	::CheckMenuItem(::GetSubMenu(m_hPopupMenu, 0), ID_TOGGLE_ONTOP, 
-									MF_BYCOMMAND | ((_settings->currentZOrder() == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
+									MF_BYCOMMAND | ((_settings->currentZOrder() == Z_ORDER_ONTOP)
+																	? MF_CHECKED : MF_UNCHECKED));
 	::CheckMenuItem(m_hSysMenu, ID_TOGGLE_ONTOP, 
-									MF_BYCOMMAND | ((_settings->currentZOrder() == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
+									MF_BYCOMMAND | ((_settings->currentZOrder() == Z_ORDER_ONTOP)
+																	? MF_CHECKED : MF_UNCHECKED));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1308,7 +1293,6 @@ DWORD Console::MonitorThread()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-
 
 /////////////////////////////////////////////////////////////////////////////
 

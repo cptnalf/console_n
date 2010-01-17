@@ -20,8 +20,6 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)\$(ProjectName)"
 			ConfigurationType="1"
 			InheritedPropertySheets=".\common_settings.vsprops"
 			UseOfMFC="0"
@@ -109,8 +107,6 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
-			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)\$(ProjectName)"
 			ConfigurationType="1"
 			InheritedPropertySheets=".\common_settings.vsprops"
 			UseOfMFC="0"
@@ -170,8 +166,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="lib\FreeImagePlus.lib comctl32.lib urlmon.lib odbc32.lib odbccp32.lib"
-				OutputFile=".\Debug/Console.exe"
+				AdditionalDependencies="FreeImagePlus.lib comctl32.lib urlmon.lib odbc32.lib odbccp32.lib"
+				OutputFile="$(OutDir)\Console.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
@@ -204,8 +200,6 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)\$(ProjectName)"
 			ConfigurationType="1"
 			InheritedPropertySheets=".\common_settings.vsprops"
 			UseOfMFC="0"
@@ -264,8 +258,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="lib\FreeImagePlus.lib comctl32.lib urlmon.lib odbc32.lib odbccp32.lib"
-				OutputFile=".\Release/Console.exe"
+				AdditionalDependencies="FreeImagePlus.lib comctl32.lib urlmon.lib odbc32.lib odbccp32.lib"
+				OutputFile="$(OutDir)\Console.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile="$(OutDir)\Console.pdb"
@@ -293,13 +287,10 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy          Release\console.exe          F:\Apps\console\&#x0D;&#x0A;copy          console.inf          F:\Apps\console\&#x0D;&#x0A;copy          Readme.txt          F:\Apps\console\&#x0D;&#x0A;copy          Release\console.exe          Console\console.exe&#x0D;&#x0A;copy          console.inf          Console\&#x0D;&#x0A;copy          Readme.txt          Console\&#x0D;&#x0A;copy          devel-changes.txt          Console\&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)\$(ProjectName)"
 			ConfigurationType="1"
 			InheritedPropertySheets=".\common_settings.vsprops"
 			UseOfMFC="0"
@@ -358,8 +349,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="lib\FreeImagePlus.lib comctl32.lib urlmon.lib odbc32.lib odbccp32.lib"
-				OutputFile=".\Release/Console.exe"
+				AdditionalDependencies="FreeImagePlus.lib comctl32.lib urlmon.lib odbc32.lib odbccp32.lib"
+				OutputFile="$(OutDir)\Console.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile="$(OutDir)\Console.pdb"
@@ -387,7 +378,6 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy          Release\console.exe          F:\Apps\console\&#x0D;&#x0A;copy          console.inf          F:\Apps\console\&#x0D;&#x0A;copy          Readme.txt          F:\Apps\console\&#x0D;&#x0A;copy          Release\console.exe          Console\console.exe&#x0D;&#x0A;copy          console.inf          Console\&#x0D;&#x0A;copy          Readme.txt          Console\&#x0D;&#x0A;copy          devel-changes.txt          Console\&#x0D;&#x0A;"
 			/>
 		</Configuration>
 	</Configurations>

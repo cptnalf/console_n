@@ -33,7 +33,7 @@
 
 using namespace std;
 
-#include "include/FreeImagePlus.h"
+#include "FreeImagePlus.h"
 
 typedef basic_string<TCHAR>			tstring;
 

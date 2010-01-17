@@ -22,13 +22,13 @@ void Console::SendTextToConsole(LPCTSTR pszText)
 	
 	HANDLE hStdIn = ::CreateFile(_T("CONIN$"), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
 	
-	DWORD	dwTextLen		= _tcslen(pszText);
+	size_t dwTextLen = _tcslen(pszText);
 	DWORD	dwTextWritten	= 0;
 	
 	INPUT_RECORD* pKeyEvents = new INPUT_RECORD[dwTextLen];
 	::ZeroMemory(pKeyEvents, sizeof(INPUT_RECORD)*dwTextLen);
 	
-	for (DWORD i = 0; i < dwTextLen; ++i)
+	for (size_t i = 0; i < dwTextLen; ++i)
 		{
 			pKeyEvents[i].EventType = KEY_EVENT;
 			pKeyEvents[i].Event.KeyEvent.bKeyDown = TRUE;

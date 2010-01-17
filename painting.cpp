@@ -460,7 +460,7 @@ void Console::DrawCursor(BOOL bOnlyCursor)
 	CONSOLE_CURSOR_INFO	cinf;
 	::GetConsoleCursorInfo(m_hStdOutFresh, &cinf);
 	
-	_settings->setCursorVisible(cinf.bVisible);
+	_settings->setCursorVisible(cinf.bVisible == TRUE);
 	
 	// ... and draw it
 	if (_settings->cursorVisible()) 

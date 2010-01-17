@@ -186,7 +186,6 @@ void Console::OnCursorTimer()
 
 void Console::OnVScroll(WPARAM wParam) 
 {
-	
 	TRACE(_T("VScroll\n"));
 	
 	int nCurrentPos = ::GetScrollPos(m_hWnd, SB_VERT);
@@ -456,7 +455,6 @@ void Console::OnMouseMove(UINT uiFlags, POINTS points)
 			
 			if (deltaX | deltaY) 
 				{
-					
 					TRACE(_T("m_nTextSelection: %i, Delta X: %i Delta Y: %i\n"), 
 								m_nTextSelection, deltaX, deltaY);
 					

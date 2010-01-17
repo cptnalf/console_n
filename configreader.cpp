@@ -877,11 +877,11 @@ bool ConfigSettings::load()
 								pBehaviourSubelement->get_text(strText.Out());
 								if (!_tcsicmp(OLE2T(strText), _T("true"))) 
 									{
-										m_bMouseDragable = TRUE;
+										m_bMouseDragable = true;
 									} 
 								else 
 									{
-										m_bMouseDragable = FALSE;
+										m_bMouseDragable = false;
 									}
 							}
 						SAFERELEASE(pBehaviourSubelement);
@@ -1013,7 +1013,7 @@ void ConfigSettings::_setDefaults()
 	m_nScrollbarThunmbHeight= ::GetSystemMetrics(SM_CYVTHUMB);
 
 	m_dwTaskbarButton		= TASKBAR_BUTTON_NORMAL;
-	m_bMouseDragable		= TRUE;
+	m_bMouseDragable		= true;
 	m_nSnapDst				= 10;
 	m_dwDocked				= DOCK_NONE;
 	m_dwOriginalZOrder		= Z_ORDER_REGULAR;

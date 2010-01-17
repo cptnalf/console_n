@@ -105,7 +105,7 @@ void Trace(const TCHAR* pszFormat, ...);
 
 #else
 
-#define TRACE		(void)0
+#define TRACE  __noop
 
 #endif // _DEBUG
 

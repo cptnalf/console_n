@@ -1,12 +1,13 @@
 <?xml version="1.0"?>
-<console title="" change_refresh="10" refresh="1000" editor="metapad.exe" editor_params="/e %f">
+<console title="" change_refresh="10" refresh="10000" editor="metapad.exe" editor_params="/e %f">
 
    <font>
 		<shadow distance="1" r="0" g="128" b="0" />
       <size>8</size>
       <bold>false</bold>
       <italic>false</italic>
-      <name>FixedMedium7x14</name>
+      <name>Lucida Console</name>
+				 <!-- FixedMedium7x14</name -->
 	  <colors>
 	     <color_00 r="0" g="0" b="0" />
 	     <color_01 r="0" g="0" b="128" />
@@ -68,8 +69,8 @@
 
 	<behaviour>
 		<mouse_drag>true</mouse_drag>
-		<copy_on_select>false</copy_on_select>
-		<inverse_shift>true</inverse_shift>
+		<copy_on_select>true</copy_on_select>
+		<inverse_shift>false</inverse_shift>
 		<disable_menu>false</disable_menu>
 	</behaviour>
 

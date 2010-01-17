@@ -990,41 +990,8 @@ void Console::EditConfigFile()
 
 /////////////////////////////////////////////////////////////////////////////
 
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::ReloadSettings() {
-
-	m_bInitializing = TRUE;
-	m_bReloading	= TRUE;
-
-	// suspend console monitor thread
-	::SuspendThread(m_hMonitorThread);
-	::KillTimer(m_hWnd, TIMER_REPAINT_CHANGE);
-	if (m_dwMasterRepaintInt) ::KillTimer(m_hWnd, TIMER_REPAINT_MASTER);
-
-	// hide Windows console
-	::ShowWindow(m_hWndConsole, SW_HIDE);
-
-	// destroy icons
-	SetTrayIcon(NIM_DELETE);
-	if (m_hSmallIcon) ::DestroyIcon(m_hSmallIcon);
-	if (m_hBigIcon) ::DestroyIcon(m_hBigIcon);
-
-	// destroy cursor
-	DestroyCursor();
-
-	// destory menus
-	::DestroyMenu(m_hConfigFilesMenu);
-	::DestroyMenu(m_hPopupMenu);
-	
-	// uninitialize flat scrollbars
-	if (m_nScrollbarStyle != FSB_REGULAR_MODE) ::UninitializeFlatSB(m_hWnd);
-
-	// destory window
-	::DestroyWindow(m_hWnd);
-	if (m_hwndInvisParent) ::DestroyWindow(m_hwndInvisParent);
-	
+void Console::_setDefaults()
+{
 	// set default values
 	m_strShell				= _T("");
 	m_strConfigEditor		= _T("notepad.exe");
@@ -1097,7 +1064,44 @@ void Console::ReloadSettings() {
 	m_dwBufferRows			= 25;
 	m_bUseTextBuffer		= FALSE;
 	m_bCopyOnSelect			= FALSE;
+}
 
+/////////////////////////////////////////////////////////////////////////////
+
+void Console::ReloadSettings() 
+{
+	m_bInitializing = TRUE;
+	m_bReloading	= TRUE;
+
+	// suspend console monitor thread
+	::SuspendThread(m_hMonitorThread);
+	::KillTimer(m_hWnd, TIMER_REPAINT_CHANGE);
+	if (m_dwMasterRepaintInt) ::KillTimer(m_hWnd, TIMER_REPAINT_MASTER);
+
+	// hide Windows console
+	::ShowWindow(m_hWndConsole, SW_HIDE);
+
+	// destroy icons
+	SetTrayIcon(NIM_DELETE);
+	if (m_hSmallIcon) ::DestroyIcon(m_hSmallIcon);
+	if (m_hBigIcon) ::DestroyIcon(m_hBigIcon);
+
+	// destroy cursor
+	DestroyCursor();
+
+	// destory menus
+	::DestroyMenu(m_hConfigFilesMenu);
+	::DestroyMenu(m_hPopupMenu);
+	
+	// uninitialize flat scrollbars
+	if (m_nScrollbarStyle != FSB_REGULAR_MODE) ::UninitializeFlatSB(m_hWnd);
+
+	// destory window
+	::DestroyWindow(m_hWnd);
+	if (m_hwndInvisParent) ::DestroyWindow(m_hwndInvisParent);
+	
+	_setDefaults();
+	
 	SetDefaultConsoleColors();
 
 	GetOptions();
@@ -1130,15 +1134,21 @@ void Console::ReloadSettings() {
 	
 	::ResumeThread(m_hMonitorThread);
 
-	if (m_bStartMinimized) {
-		if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) {
-			m_bHideWindow = TRUE;
-		} else {
-			::ShowWindow(m_hWnd, SW_MINIMIZE);
+	if (m_bStartMinimized) 
+		{
+		if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) 
+			{
+				m_bHideWindow = TRUE;
+			} 
+		else 
+			{
+				::ShowWindow(m_hWnd, SW_MINIMIZE);
+			}
+		} 
+	else
+		{
+			::ShowWindow(m_hWnd, SW_SHOW);
 		}
-	} else {
-		::ShowWindow(m_hWnd, SW_SHOW);
-	}
 	
 	::SetForegroundWindow(m_hWnd);
 }

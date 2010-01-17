@@ -42,11 +42,13 @@ Console*	g_pConsole		= NULL;
 
 /////////////////////////////////////////////////////////////////////////////
 // global var for OS version (TRUE - running on NT/2000, FALSE - running on Win9x)
-BOOL g_bWinNT = FALSE;
+bool g_bWinNT = FALSE;
 
 /////////////////////////////////////////////////////////////////////////////
 // global var for OS version (TRUE - Win2000, FALSE - otherwise)
-BOOL g_bWin2000 = FALSE;
+bool g_bWin2000 = FALSE;
+
+OSVERSIONINFO	g_osInfo;
 
 /////////////////////////////////////////////////////////////////////////////
 // Win2k library stuff

@@ -95,17 +95,21 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	g_hInstance = hInstance;
 
 	// determine Windows version (9x or NT/2000)
-	OSVERSIONINFO	osInfo;
-	osInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-	::GetVersionEx(&osInfo);
+	g_osInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+	::GetVersionEx(&g_osInfo);
 	
-	if (osInfo.dwPlatformId == VER_PLATFORM_WIN32_NT) {
-		g_bWinNT = TRUE;
-		if (osInfo.dwMajorVersion >= 5) g_bWin2000 = TRUE;
-	} else {
-		::MessageBox(NULL, _T("Console requires Windows NT/2000/XP"), _T("Wrong Windows version"), MB_OK);
-		return FALSE;
-	}
+	if (g_osInfo.dwPlatformId == VER_PLATFORM_WIN32_NT)
+		{
+			g_bWinNT = TRUE;
+			g_bWin2000 = (g_osInfo.dwMajorVersion >= 5);
+		} 
+	else 
+		{
+			::MessageBox(NULL, 
+									 _T("Console requires Windows NT/2000/XP"), 
+									 _T("Wrong Windows version"), MB_OK);
+			return FALSE;
+		}
 
 	// let's parse the command line
 	TCHAR	szConfigFile[MAX_PATH];
@@ -126,57 +130,95 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		::ZeroMemory(szTmp, sizeof(szTmp));
 		pPos = ParseNextToken(pPos, szTmp);
 
-		if ((szTmp[0] == _TCHAR('-')) || (szTmp[0] == _TCHAR('/'))) {
-			// cmd-line option
-			if (szTmp[1] == _TCHAR('c')) {
-				pPos = ParseNextToken(pPos, szShellCmdLine);
-			} else if (szTmp[1] == _TCHAR('t')) {
-				pPos = ParseNextToken(pPos, szConsoleTitle);
-			} else if (szTmp[1] == _TCHAR('r')) {
-				pPos = ParseNextToken(pPos, szReloadNewConfig);
+		if ((szTmp[0] == _TCHAR('-')) || (szTmp[0] == _TCHAR('/'))) 
+			{
+				// cmd-line option
+				if (szTmp[1] == _TCHAR('c')) 
+					{
+						pPos = ParseNextToken(pPos, szShellCmdLine);
+					} 
+				else if (szTmp[1] == _TCHAR('t')) 
+					{
+						pPos = ParseNextToken(pPos, szConsoleTitle);
+					} 
+				else if (szTmp[1] == _TCHAR('r')) 
+					{
+						pPos = ParseNextToken(pPos, szReloadNewConfig);
+					}
+			} 
+		else if (szConfigFile[0] == 0x0) 
+			{
+				// config file
+				_tcscpy_s(szConfigFile, sizeof(szConfigFile)/sizeof(TCHAR), szTmp);
 			}
-		} else if (szConfigFile[0] == 0x0) {
-			// config file
-			_tcscpy_s(szConfigFile, sizeof(szConfigFile)/sizeof(TCHAR), szTmp);
-		}
-
 	}
 
-	if (g_bWin2000) {
-		// load User32.dll, and get some Win2k-specific functions
-		g_hUser32 = ::LoadLibrary(_T("user32.dll"));
-		if (g_hUser32 == NULL) {
-			::MessageBox(NULL, _T("Unable to load User32.dll! Exiting."), _T("Error"), MB_OK);
-			return FALSE;
+	if (g_bWin2000)
+		{
+			// load User32.dll, and get some Win2k-specific functions
+			g_hUser32 = ::LoadLibrary(_T("user32.dll"));
+			if (g_hUser32 == NULL) 
+				{
+					::MessageBox(NULL, _T("Unable to load User32.dll! Exiting."), _T("Error"), MB_OK);
+					return FALSE;
+				}
+			g_hMsimg32 = ::LoadLibrary(_T("Msimg32.dll"));
+			if (g_hMsimg32 == NULL) 
+				{
+					::MessageBox(NULL, _T("Unable to load Msimg32.dll! Exiting."), _T("Error"), MB_OK);
+					return FALSE;
+				}
+			
+			g_pfnAlphaBlend			= (ALPHABLEND)::GetProcAddress(g_hMsimg32, "AlphaBlend");
+			g_pfnSetLayeredWndAttr	= (SETLAYEREDWINDOWATTRIBUTES)::GetProcAddress(g_hUser32, "SetLayeredWindowAttributes");
+			
+			if ((g_osInfo.dwMajorVersion >= 6)
+					&& (g_osInfo.dwMinorVersion >= 1))
+				{
+					/* so, windows 7. setup appusermodelid stuffs. */
+					/*
+					 * see:
+					 * http://msdn.microsoft.com/en-us/library/dd378459(VS.85).aspx
+					 * title: Application User Model IDs (AppUserModelIDs)
+					 * 
+					 */
+					
+					typedef HRESULT (*SetCurProcAppUserModelIDFx_T)(const wchar_t* appID);
+					
+					SetCurProcAppUserModelIDFx_T procSetModelID = NULL;
+					
+					HMODULE sh32 = GetModuleHandle(_T("shell32.dll"));
+					
+					if (sh32)
+						{
+							procSetModelID = (SetCurProcAppUserModelIDFx_T)
+								GetProcAddress(sh32, "SetCurrentProcessExplicitAppUserModelID");
+							
+							if (procSetModelID) { procSetModelID(L"Ingenuity_Unlimited_Ltd.Console"); }
+						}
+				}
+			
+			InitMultipleMonitorStubs();
 		}
-		g_hMsimg32 = ::LoadLibrary(_T("Msimg32.dll"));
-		if (g_hMsimg32 == NULL) {
-			::MessageBox(NULL, _T("Unable to load Msimg32.dll! Exiting."), _T("Error"), MB_OK);
-			return FALSE;
-		}
-		
-		g_pfnAlphaBlend			= (ALPHABLEND)::GetProcAddress(g_hMsimg32, "AlphaBlend");
-		g_pfnSetLayeredWndAttr	= (SETLAYEREDWINDOWATTRIBUTES)::GetProcAddress(g_hUser32, "SetLayeredWindowAttributes");
-
-		InitMultipleMonitorStubs();
-	}
-
+	
 	// create console class instance
 	g_pConsole = new Console(szConfigFile, szShellCmdLine, szConsoleTitle, szReloadNewConfig);
 
-	if (!g_pConsole->Create(NULL)) {
-		DEL_OBJ(g_pConsole);
-		return 0;	
-	}
-
+	if (!g_pConsole->Create(NULL)) 
+		{
+			DEL_OBJ(g_pConsole);
+			return 0;	
+		}
+	
 	// pump messages (no TranslateMessage here, we do that in WinProc)
 	MSG	msg;
 	while (::GetMessage(&msg, NULL, 0, 0)) ::DispatchMessage(&msg);
 
-	if (g_bWin2000) {
-		::FreeLibrary(g_hUser32);
-		::FreeLibrary(g_hMsimg32);
-	}
+	if (g_bWin2000) 
+		{
+			::FreeLibrary(g_hUser32);
+			::FreeLibrary(g_hMsimg32);
+		}
 	
 	return msg.wParam;
 }

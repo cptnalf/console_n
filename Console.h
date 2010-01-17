@@ -351,7 +351,8 @@ public: // public data
 	COLORREF	m_arrConsoleColors[16];
 
 private: // private data
-
+	void _setDefaults();
+	
 	// readem filename
 	tstring	m_strReadmeFile;
 

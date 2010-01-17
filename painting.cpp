@@ -26,37 +26,37 @@ void Console::ResizeConsoleWindow()
 	::GetConsoleScreenBufferInfo(m_hStdOutFresh, &csbi);
 	
 	// in case buffer rows increased since last resize, and we're not using text buffer
-	if (!m_bUseTextBuffer) m_dwBufferRows = m_dwRows;
+	if (!_settings->useTextBuffer()) _settings->setBufferRows(_settings->rows());
 	
 	COORD		coordBuffersSize;
-	coordBuffersSize.X = (SHORT)m_dwColumns;
-	coordBuffersSize.Y = (SHORT)m_dwBufferRows;
+	coordBuffersSize.X = (SHORT)_settings->columns();
+	coordBuffersSize.Y = (SHORT)_settings->bufferRows();
 	
 	SMALL_RECT	srConsoleRect;
 	srConsoleRect.Top	= srConsoleRect.Left =0;
-	srConsoleRect.Right	= (short)(m_dwColumns - 1);
-	srConsoleRect.Bottom= (short)(m_dwRows - 1);
+	srConsoleRect.Right	= (short)(_settings->columns() - 1);
+	srConsoleRect.Bottom= (short)(_settings->rows() - 1);
 	
 	// order of setting window size and screen buffer size depends on current and desired dimensions
-	if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y > (DWORD) m_dwColumns * m_dwBufferRows)
+	if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y > (DWORD) _settings->columns() * _settings->bufferRows())
 		{
-		
-		if (m_bUseTextBuffer && (csbi.dwSize.Y > (short)m_dwBufferRows)) 
-			{
-				m_dwBufferRows = coordBuffersSize.Y = csbi.dwSize.Y;
-			}
-		
+			if (_settings->useTextBuffer() 
+					&& (csbi.dwSize.Y > (short)_settings->bufferRows())) 
+				{
+					_settings->setBufferRows(coordBuffersSize.Y = csbi.dwSize.Y);
+				}
+			
 		::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
 		::SetConsoleScreenBufferSize(m_hStdOutFresh, coordBuffersSize);
 		
 		//	} else if (((DWORD)csbi.dwSize.X < m_dwColumns) || ((DWORD)csbi.dwSize.Y < m_dwBufferRows) || ((DWORD)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1) != m_dwRows)) {
 		} 
-	else if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y < (DWORD) m_dwColumns * m_dwBufferRows) 
+	else if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y < (DWORD) _settings->columns() *_settings->bufferRows()) 
 		{
 			
-			if (csbi.dwSize.Y < (short)m_dwBufferRows) 
+			if (csbi.dwSize.Y < (short)_settings->bufferRows()) 
 				{
-					m_dwBufferRows = coordBuffersSize.Y = csbi.dwSize.Y;
+					_settings->setBufferRows(coordBuffersSize.Y = csbi.dwSize.Y);
 				}
 			
 			::SetConsoleScreenBufferSize(m_hStdOutFresh, coordBuffersSize);
@@ -68,11 +68,11 @@ void Console::ResizeConsoleWindow()
 	SetWindowSizeAndPosition();
 	CreateOffscreenBuffers();
 	
-	if (m_bBitmapBackground) CreateBackgroundBitmap();
+	if (_settings->bitmapBackground()) CreateBackgroundBitmap();
 	
 	// resize screen buffer
 	DEL_ARR(m_pScreenBuffer);
-	m_pScreenBuffer = new CHAR_INFO[m_dwRows * m_dwColumns];
+	m_pScreenBuffer = new CHAR_INFO[_settings->rows() * _settings->columns()];
 	
 	m_bInitializing = FALSE;
 }
@@ -90,14 +90,14 @@ void Console::RepaintWindow()
 	rect.bottom	= m_nClientHeight;
 	rect.right	= m_nClientWidth;
 	
-	if (m_bBitmapBackground) 
+	if (_settings->bitmapBackground()) 
 		{
-			if (m_bRelativeBackground) 
+			if (_settings->relativeBackground()) 
 				{
 					::BitBlt(m_hdcConsole, 0, 0, 
 									 m_nClientWidth, m_nClientHeight, m_hdcBackground, 
-									 m_nX+m_nXBorderSize-m_nBackgroundOffsetX, 
-									 m_nY+m_nCaptionSize+m_nYBorderSize-m_nBackgroundOffsetY, 
+									 _settings->getX()+m_nXBorderSize-m_nBackgroundOffsetX, 
+									 _settings->getY()+m_nCaptionSize+m_nYBorderSize-m_nBackgroundOffsetY, 
 									 SRCCOPY);
 				} 
 			else
@@ -112,8 +112,8 @@ void Console::RepaintWindow()
 			::FillRect(m_hdcConsole, &rect, m_hBkBrush);
 		}
 	
-	DWORD dwX			= m_nInsideBorder;
-	DWORD dwY			= m_nInsideBorder;
+	DWORD dwX			= _settings->insideBorder();
+	DWORD dwY			= _settings->insideBorder();
 	DWORD dwOffset		= 0;
 	
 	WORD attrBG;
@@ -130,10 +130,10 @@ void Console::RepaintWindow()
 	if (m_nCharWidth > 0) 
 		{
 			// fixed pitch font
-			for (DWORD i = 0; i < m_dwRows; ++i) 
+			for (DWORD i = 0; i < _settings->rows(); ++i) 
 				{
-					dwX = m_nInsideBorder;
-					dwY = i*m_nCharHeight + m_nInsideBorder;
+					dwX = _settings->insideBorder();
+					dwY = i*m_nCharHeight + _settings->insideBorder();
 					
 					nBkMode			= TRANSPARENT;
 					crBkColor		= RGB(0, 0, 0);
@@ -144,7 +144,7 @@ void Console::RepaintWindow()
 					attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
 			
 					// here we decide how to paint text over the backgound
-					if (m_arrConsoleColors[attrBG] == m_crBackground) 
+					if (_settings->consoleColor(attrBG) == _settings->background()) 
 						{
 							::SetBkMode(m_hdcConsole, TRANSPARENT);
 							nBkMode		= TRANSPARENT;
@@ -153,25 +153,25 @@ void Console::RepaintWindow()
 						{
 							::SetBkMode(m_hdcConsole, OPAQUE);
 							nBkMode		= OPAQUE;
-							::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
-							crBkColor	= m_arrConsoleColors[attrBG];
+							::SetBkColor(m_hdcConsole, _settings->consoleColor(attrBG));
+							crBkColor	= _settings->consoleColor(attrBG);
 						}
 			
-					::SetTextColor(m_hdcConsole, m_bUseFontColor
-												 ? m_crFontColor
-												 : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF]);
-					crTxtColor		= m_bUseFontColor 
-						? m_crFontColor
-						: m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF];
+					::SetTextColor(m_hdcConsole, _settings->useFontColor()
+												 ? _settings->fontColor()
+												 : _settings->consoleColor(m_pScreenBuffer[dwOffset].Attributes & 0xF));
+					crTxtColor		= _settings->useFontColor() 
+						? _settings->fontColor()
+						: _settings->consoleColor(m_pScreenBuffer[dwOffset].Attributes & 0xF);
 					
 					strText = m_pScreenBuffer[dwOffset].Char.UnicodeChar;
 					++dwOffset;
 					
-					for (DWORD j = 1; j < m_dwColumns; ++j) 
+					for (DWORD j = 1; j < _settings->columns(); ++j) 
 						{
 							attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
 							
-							if (m_arrConsoleColors[attrBG] == m_crBackground) 
+							if (_settings->consoleColor(attrBG) == _settings->background()) 
 								{
 									if (nBkMode != TRANSPARENT) 
 										{
@@ -186,20 +186,20 @@ void Console::RepaintWindow()
 											nBkMode = OPAQUE;
 											bTextOut = true;
 										}
-									if (crBkColor != m_arrConsoleColors[attrBG]) 
+									if (crBkColor != _settings->consoleColor(attrBG)) 
 										{
-											crBkColor = m_arrConsoleColors[attrBG];
+											crBkColor = _settings->consoleColor(attrBG);
 											bTextOut = true;
 										}
 								}
 
-							if (crTxtColor != (m_bUseFontColor 
-																 ? m_crFontColor
-																 : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF])) 
+							if (crTxtColor != (_settings->useFontColor()
+																 ? _settings->fontColor()
+																 : _settings->consoleColor(m_pScreenBuffer[dwOffset].Attributes & 0xF))) 
 								{
-									crTxtColor = m_bUseFontColor
-										? m_crFontColor
-										: m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF];
+									crTxtColor = _settings->useFontColor()
+										? _settings->fontColor()
+										: _settings->consoleColor(m_pScreenBuffer[dwOffset].Attributes & 0xF);
 									bTextOut = true;
 								}
 					
@@ -237,29 +237,32 @@ void Console::RepaintWindow()
 		{
 			// variable pitch font
 			memcpy(m_pScreenBuffer, m_pScreenBufferNew, 
-						 sizeof(CHAR_INFO)*m_dwRows * m_dwColumns);
+						 sizeof(CHAR_INFO)*_settings->rows() * _settings->columns());
 		
-			for (DWORD i = 0; i < m_dwRows; ++i)
+			for (DWORD i = 0; i < _settings->rows(); ++i)
 				{
-					dwX = m_nInsideBorder;
-					dwY = i*m_nCharHeight + m_nInsideBorder;
+					dwX = _settings->insideBorder();
+					dwY = i*m_nCharHeight + _settings->insideBorder();
 					
-					for (DWORD j = 0; j < m_dwColumns; ++j) 
+					for (DWORD j = 0; j < _settings->columns(); ++j) 
 						{
 							attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
 							
 							// here we decide how to paint text over the backgound
-							if (m_arrConsoleColors[attrBG] == m_crBackground) 
+							if (_settings->consoleColor(attrBG) == _settings->background()) 
 								{
 									::SetBkMode(m_hdcConsole, TRANSPARENT);
 								} 
 							else
 								{
 									::SetBkMode(m_hdcConsole, OPAQUE);
-									::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
+									::SetBkColor(m_hdcConsole, _settings->consoleColor(attrBG));
 								}
 				
-							::SetTextColor(m_hdcConsole, m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF]);
+							::SetTextColor(m_hdcConsole, 
+														 _settings->useFontColor()
+														 ? _settings->fontColor()
+														 : _settings->consoleColor(m_pScreenBuffer[dwOffset].Attributes & 0xF));
 							ShadowTextOut(m_hdcConsole, dwX, dwY, &(m_pScreenBuffer[dwOffset].Char.UnicodeChar), 1);
 							int nWidth;
 							::GetCharWidth32(m_hdcConsole, m_pScreenBuffer[dwOffset].Char.UnicodeChar, m_pScreenBuffer[dwOffset].Char.UnicodeChar, &nWidth);
@@ -281,8 +284,8 @@ void Console::RepaintWindow()
 
 void Console::RepaintWindowChanges() 
 {
-	DWORD dwX			= m_nInsideBorder;
-	DWORD dwY			= m_nInsideBorder;
+	DWORD dwX			= _settings->insideBorder();
+	DWORD dwY			= _settings->insideBorder();
 	DWORD dwOffset		= 0;
 	
 	WORD attrBG;
@@ -291,13 +294,13 @@ void Console::RepaintWindowChanges()
 		{
 
 			// fixed pitch font
-			for (DWORD i = 0; i < m_dwRows; ++i) 
+			for (DWORD i = 0; i < _settings->rows(); ++i) 
 				{
 			
-					dwX = m_nInsideBorder;
-					dwY = i*m_nCharHeight + m_nInsideBorder;
+					dwX = _settings->insideBorder();
+					dwY = i*m_nCharHeight + _settings->insideBorder();
 
-					for (DWORD j = 0; j < m_dwColumns; ++j) 
+					for (DWORD j = 0; j < _settings->columns(); ++j) 
 						{
 
 							if (memcmp(&(m_pScreenBuffer[dwOffset]), &(m_pScreenBufferNew[dwOffset]), sizeof(CHAR_INFO))) 
@@ -311,15 +314,19 @@ void Console::RepaintWindowChanges()
 									rect.bottom	= dwY + m_nCharHeight;
 									rect.right	= dwX + m_nCharWidth;
 					
-									if (m_bBitmapBackground) 
+									if (_settings->bitmapBackground()) 
 										{
-											if (m_bRelativeBackground) 
+											if (_settings->relativeBackground()) 
 												{
-													::BitBlt(m_hdcConsole, dwX, dwY, m_nCharWidth, m_nCharHeight, m_hdcBackground, m_nX+m_nXBorderSize-m_nBackgroundOffsetX+(int)dwX, m_nY+m_nCaptionSize+m_nYBorderSize-m_nBackgroundOffsetY+(int)dwY, SRCCOPY);
+													::BitBlt(m_hdcConsole, dwX, dwY, m_nCharWidth, m_nCharHeight, 
+																	 m_hdcBackground, 
+																	 _settings->getX() + m_nXBorderSize - m_nBackgroundOffsetX + (int)dwX, 
+																	 _settings->getY() + m_nCaptionSize + m_nYBorderSize - m_nBackgroundOffsetY + (int)dwY, SRCCOPY);
 												} 
 											else
 												{
-													::BitBlt(m_hdcConsole, dwX, dwY, m_nCharWidth, m_nCharHeight, m_hdcBackground, dwX, dwY, SRCCOPY);
+													::BitBlt(m_hdcConsole, dwX, dwY, 
+																	 m_nCharWidth, m_nCharHeight, m_hdcBackground, dwX, dwY, SRCCOPY);
 												}
 										} 
 									else
@@ -331,17 +338,20 @@ void Console::RepaintWindowChanges()
 									attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
 
 									// here we decide how to paint text over the backgound
-									if (m_arrConsoleColors[attrBG] == m_crBackground) 
+									if (_settings->consoleColor(attrBG) == _settings->background()) 
 										{
 											::SetBkMode(m_hdcConsole, TRANSPARENT);
 										} 
 									else
 										{
 											::SetBkMode(m_hdcConsole, OPAQUE);
-											::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
+											::SetBkColor(m_hdcConsole, _settings->consoleColor(attrBG));
 										}
 					
-									::SetTextColor(m_hdcConsole, m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF]);
+									::SetTextColor(m_hdcConsole, 
+																 _settings->useFontColor()
+																 ? _settings->fontColor()
+																 : _settings->consoleColor(m_pScreenBuffer[dwOffset].Attributes & 0xF));
 									ShadowTextOut(m_hdcConsole, dwX, dwY, &(m_pScreenBuffer[dwOffset].Char.UnicodeChar), 1);
 
 									::InvalidateRect(m_hWnd, &rect, FALSE);
@@ -357,10 +367,10 @@ void Console::RepaintWindowChanges()
 		{
 			// variable pitch font
 			if (memcmp(m_pScreenBuffer, m_pScreenBufferNew, 
-								 sizeof(CHAR_INFO)*m_dwRows * m_dwColumns)) 
+								 sizeof(CHAR_INFO)*_settings->rows() * _settings->columns())) 
 				{
 					memcpy(m_pScreenBuffer, m_pScreenBufferNew, 
-								 sizeof(CHAR_INFO)*m_dwRows * m_dwColumns);
+								 sizeof(CHAR_INFO)*_settings->rows() * _settings->columns());
 				
 					RECT rect;
 					rect.top	= 0;
@@ -368,14 +378,14 @@ void Console::RepaintWindowChanges()
 					rect.bottom	= m_nClientHeight;
 					rect.right	= m_nClientWidth;
 		
-					if (m_bBitmapBackground) 
+					if (_settings->bitmapBackground()) 
 						{
-							if (m_bRelativeBackground) 
+							if (_settings->relativeBackground()) 
 								{
 									::BitBlt(m_hdcConsole, 0, 0, 
 													 m_nClientWidth, m_nClientHeight, m_hdcBackground, 
-													 m_nX+m_nXBorderSize-m_nBackgroundOffsetX, 
-													 m_nY+m_nCaptionSize+m_nYBorderSize-m_nBackgroundOffsetY, 
+													 _settings->getX() + m_nXBorderSize - m_nBackgroundOffsetX, 
+													 _settings->getY() + m_nCaptionSize + m_nYBorderSize - m_nBackgroundOffsetY, 
 													 SRCCOPY);
 								} 
 							else 
@@ -390,28 +400,31 @@ void Console::RepaintWindowChanges()
 							::FillRect(m_hdcConsole, &rect, m_hBkBrush);
 						}
 		
-					for (DWORD i = 0; i < m_dwRows; ++i) 
+					for (DWORD i = 0; i < _settings->rows(); ++i) 
 						{
-							dwX = m_nInsideBorder;
-							dwY = i*m_nCharHeight + m_nInsideBorder;
+							dwX = _settings->insideBorder();
+							dwY = i*m_nCharHeight + _settings->insideBorder();
 			
-							for (DWORD j = 0; j < m_dwColumns; ++j) 
+							for (DWORD j = 0; j < _settings->columns(); ++j) 
 								{
 				
 									attrBG = m_pScreenBuffer[dwOffset].Attributes >> 4;
 				
 									// here we decide how to paint text over the backgound
-									if (m_arrConsoleColors[attrBG] == m_crBackground) 
+									if (_settings->consoleColor(attrBG) == _settings->background()) 
 										{
 											::SetBkMode(m_hdcConsole, TRANSPARENT);
 										} 
 									else
 										{
 											::SetBkMode(m_hdcConsole, OPAQUE);
-											::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
+											::SetBkColor(m_hdcConsole, _settings->consoleColor(attrBG));
 										}
 				
-									::SetTextColor(m_hdcConsole, m_bUseFontColor ? m_crFontColor : m_arrConsoleColors[m_pScreenBuffer[dwOffset].Attributes & 0xF]);
+									::SetTextColor(m_hdcConsole, 
+																 _settings->useFontColor()
+																 ? _settings->fontColor()
+																 : _settings->consoleColor(m_pScreenBuffer[dwOffset].Attributes & 0xF));
 									ShadowTextOut(m_hdcConsole, dwX, dwY, &(m_pScreenBuffer[dwOffset].Char.UnicodeChar), 1);
 									int nWidth;
 									::GetCharWidth32(m_hdcConsole, m_pScreenBuffer[dwOffset].Char.UnicodeChar, m_pScreenBuffer[dwOffset].Char.UnicodeChar, &nWidth);
@@ -436,7 +449,7 @@ void Console::DrawCursor(BOOL bOnlyCursor)
 {
 	
 	// first, erase old cursor image if needed
-	if (!bOnlyCursor && m_bCursorVisible) 
+	if (!bOnlyCursor && _settings->cursorVisible()) 
 {
 		RECT rectCursorOld;
 		DrawCursorBackground(rectCursorOld);
@@ -447,10 +460,10 @@ void Console::DrawCursor(BOOL bOnlyCursor)
 	CONSOLE_CURSOR_INFO	cinf;
 	::GetConsoleCursorInfo(m_hStdOutFresh, &cinf);
 	
-	m_bCursorVisible = cinf.bVisible;
+	_settings->setCursorVisible(cinf.bVisible);
 	
 	// ... and draw it
-	if (m_bCursorVisible) 
+	if (_settings->cursorVisible()) 
 		{
 		
 			::GetConsoleScreenBufferInfo(m_hStdOutFresh, &m_csbiCursor);
@@ -458,7 +471,7 @@ void Console::DrawCursor(BOOL bOnlyCursor)
 			if (m_csbiCursor.dwCursorPosition.Y < m_csbiCursor.srWindow.Top 
 					|| m_csbiCursor.dwCursorPosition.Y > m_csbiCursor.srWindow.Bottom) 
 				{
-					m_bCursorVisible = FALSE;
+					_settings->setCursorVisible(false);
 					return;
 				}
 		
@@ -489,29 +502,29 @@ inline void Console::DrawCursorBackground(RECT& rectCursor)
 	GetCursorRect(rectCursor);
 	
 	WORD attrBG = 
-		m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y*m_dwColumns 
+		m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y * _settings->columns() 
 										+ m_csbiCursor.dwCursorPosition.X].Attributes >> 4;
 	
 	// here we decide how to paint text over the backgound
 	
-	if (m_arrConsoleColors[attrBG] == m_crBackground) 
+	if (_settings->consoleColor(attrBG) == _settings->background()) 
 		{
 			::SetBkMode(m_hdcConsole, TRANSPARENT);
 		} 
 	else
 		{
 			::SetBkMode(m_hdcConsole, OPAQUE);
-			::SetBkColor(m_hdcConsole, m_arrConsoleColors[attrBG]);
+			::SetBkColor(m_hdcConsole, _settings->consoleColor(attrBG));
 		}
 	
 	::SetTextColor(m_hdcConsole, 
-								 m_bUseFontColor 
-								 ? m_crFontColor
-								 : m_arrConsoleColors[m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y*m_dwColumns + m_csbiCursor.dwCursorPosition.X].Attributes & 0xF]);
+								 _settings->useFontColor()
+								 ? _settings->fontColor()
+								 : _settings->consoleColor(m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y * _settings->columns() + m_csbiCursor.dwCursorPosition.X].Attributes & 0xF));
 	
-	if (m_bBitmapBackground) 
+	if (_settings->bitmapBackground()) 
 		{
-			if (m_bRelativeBackground) 
+			if (_settings->relativeBackground()) 
 				{
 					::BitBlt(
 									 m_hdcConsole, 
@@ -520,8 +533,8 @@ inline void Console::DrawCursorBackground(RECT& rectCursor)
 									 rectCursor.right - rectCursor.left, 
 									 rectCursor.bottom - rectCursor.top, 
 									 m_hdcBackground, 
-									 m_nX+m_nXBorderSize-m_nBackgroundOffsetX + rectCursor.left, 
-									 m_nY+m_nCaptionSize+m_nYBorderSize-m_nBackgroundOffsetY
+									 _settings->getX() + m_nXBorderSize - m_nBackgroundOffsetX + rectCursor.left, 
+									 _settings->getY() + m_nCaptionSize + m_nYBorderSize - m_nBackgroundOffsetY
 									 + rectCursor.top, 
 									 SRCCOPY);
 
@@ -548,7 +561,7 @@ inline void Console::DrawCursorBackground(RECT& rectCursor)
 								m_hdcConsole, 
 								rectCursor.left, 
 								rectCursor.top, 
-								&(m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y*m_dwColumns
+								&(m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y * _settings->columns()
 																	+ m_csbiCursor.dwCursorPosition.X].Char.UnicodeChar), 
 								1);
 }
@@ -567,12 +580,12 @@ inline void Console::GetCursorRect(RECT& rectCursor)
 		{
 			// fixed pitch
 			
-			rectCursor.left = m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nInsideBorder;
-			rectCursor.top = m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nInsideBorder;
+			rectCursor.left = m_csbiCursor.dwCursorPosition.X * m_nCharWidth + _settings->insideBorder();
+			rectCursor.top = m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + _settings->insideBorder();
 			rectCursor.right = 
-				m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nCharWidth + m_nInsideBorder;
+				m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nCharWidth + _settings->insideBorder();
 			rectCursor.bottom = 
-				m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nCharHeight + m_nInsideBorder;
+				m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nCharHeight + _settings->insideBorder();
 			
 		} 
 	else
@@ -587,7 +600,7 @@ inline void Console::GetCursorRect(RECT& rectCursor)
 			for (short i = 0; i <= m_csbiCursor.dwCursorPosition.X; ++i) 
 				{ 
 					pszLine.get()[i] = 
-						m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y * m_dwColumns + i].Char.UnicodeChar;
+						m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y * _settings->columns() + i].Char.UnicodeChar;
 				}
 			
 			rectLine.left	= rectLine.right	= 0;
@@ -610,10 +623,10 @@ inline void Console::GetCursorRect(RECT& rectCursor)
 					return;
 				}
 			
-			rectCursor.left		= rectLine.right - (DWORD)nLastCharWidth + m_nInsideBorder;
-			rectCursor.top		= rectLine.top + m_nInsideBorder;
-			rectCursor.right	= rectLine.right + m_nInsideBorder;
-			rectCursor.bottom	= rectLine.bottom + m_nInsideBorder;
+			rectCursor.left		= rectLine.right - (DWORD)nLastCharWidth + _settings->insideBorder();
+			rectCursor.top		= rectLine.top + _settings->insideBorder();
+			rectCursor.right	= rectLine.right + _settings->insideBorder();
+			rectCursor.bottom	= rectLine.bottom + _settings->insideBorder();
 		}
 }
 
@@ -625,10 +638,12 @@ inline void Console::GetCursorRect(RECT& rectCursor)
 inline void Console::ShadowTextOut (HDC hdc, 
 																		int nXStart, int nYStart, LPCTSTR lpString, int cbString) 
 {
-	if (m_shadowDistance != 0) 
+	if (_settings->shadowDistance() != 0) 
 		{
-			COLORREF origColor = ::SetTextColor(hdc, m_shadowColor);
-			::TextOut(hdc, nXStart+m_shadowDistance, nYStart+m_shadowDistance, lpString, cbString);
+			COLORREF origColor = ::SetTextColor(hdc, _settings->shadowColor());
+			::TextOut(hdc,
+								nXStart + _settings->shadowDistance(),
+								nYStart + _settings->shadowDistance(), lpString, cbString);
 			::SetTextColor(hdc, origColor);
 		}
 	::TextOut(hdc, nXStart, nYStart, lpString, cbString);

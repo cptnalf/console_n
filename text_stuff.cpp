@@ -73,8 +73,8 @@ void Console::PasteClipoardText()
 
 void Console::CopyTextToClipboard() 
 {
-	int nSelX = (m_rectSelection.left - m_nInsideBorder)/m_nCharWidth;
-	int nSelY = (m_rectSelection.top - m_nInsideBorder)/m_nCharHeight;
+	int nSelX = (m_rectSelection.left - _settings->insideBorder())/m_nCharWidth;
+	int nSelY = (m_rectSelection.top - _settings->insideBorder())/m_nCharHeight;
 	int nSelColumns = (m_rectSelection.right-m_rectSelection.left)/m_nCharWidth;
 	int nSelRows = (m_rectSelection.bottom-m_rectSelection.top)/m_nCharHeight;
 	
@@ -109,7 +109,7 @@ void Console::CopyTextToClipboard()
 			for (int j = 0; j < nSelColumns; ++j)
 				{
 					pszData[i*(nSelColumns+2) + j] = 
-						m_pScreenBuffer[(nSelY+i)*m_dwColumns + nSelX + j].Char.UnicodeChar;
+						m_pScreenBuffer[(nSelY+i)*_settings->columns() + nSelX + j].Char.UnicodeChar;
 				}
 			// at the end of each row we put \r\n (except for the last one where we put \0)
 			pszData[i*(nSelColumns+2) + nSelColumns] = _TCHAR('\r');
@@ -158,12 +158,12 @@ inline void Console::GetCursorRect(RECT& rectCursor)
 		{
 			// fixed pitch
 			
-			rectCursor.left = m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nInsideBorder;
-			rectCursor.top = m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nInsideBorder;
+			rectCursor.left = m_csbiCursor.dwCursorPosition.X * m_nCharWidth + _settings->insideBorder();
+			rectCursor.top = m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + _settings->insideBorder();
 			rectCursor.right = 
-				m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nCharWidth + m_nInsideBorder;
+				m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nCharWidth + _settings->insideBorder();
 			rectCursor.bottom = 
-				m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nCharHeight + m_nInsideBorder;
+				m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nCharHeight + _settings->insideBorder();
 			
 		} 
 	else
@@ -178,7 +178,7 @@ inline void Console::GetCursorRect(RECT& rectCursor)
 			for (short i = 0; i <= m_csbiCursor.dwCursorPosition.X; ++i) 
 				{ 
 					pszLine.get()[i] = 
-						m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y * m_dwColumns + i].Char.UnicodeChar;
+						m_pScreenBuffer[m_csbiCursor.dwCursorPosition.Y * _settings->columns() + i].Char.UnicodeChar;
 				}
 			
 			rectLine.left	= rectLine.right	= 0;
@@ -197,14 +197,13 @@ inline void Console::GetCursorRect(RECT& rectCursor)
 														pszLine.get()[m_csbiCursor.dwCursorPosition.X], 
 														&nLastCharWidth)) 
 				{
-					
 					return;
 				}
 			
-			rectCursor.left		= rectLine.right - (DWORD)nLastCharWidth + m_nInsideBorder;
-			rectCursor.top		= rectLine.top + m_nInsideBorder;
-			rectCursor.right	= rectLine.right + m_nInsideBorder;
-			rectCursor.bottom	= rectLine.bottom + m_nInsideBorder;
+			rectCursor.left		= rectLine.right - (DWORD)nLastCharWidth + _settings->insideBorder();
+			rectCursor.top		= rectLine.top + _settings->insideBorder();
+			rectCursor.right	= rectLine.right + _settings->insideBorder();
+			rectCursor.bottom	= rectLine.bottom + _settings->insideBorder();
 		}
 }
 
@@ -220,24 +219,24 @@ void Console::InitConsoleWndSize(DWORD dwColumns)
 	
 	COORD coordConsoleSize;
 	coordConsoleSize.X = (SHORT)dwColumns;
-	coordConsoleSize.Y = (SHORT)m_dwBufferRows;
+	coordConsoleSize.Y = (SHORT)_settings->bufferRows();
 	
 	SMALL_RECT	srConsoleRect;
 	srConsoleRect.Top	= srConsoleRect.Left =0;
 	srConsoleRect.Right	= (short)(dwColumns - 1);
-	srConsoleRect.Bottom= (short)(m_dwRows - 1);
+	srConsoleRect.Bottom= (short)(_settings->rows() - 1);
 	
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	::GetConsoleScreenBufferInfo(m_hStdOutFresh, &csbi);
 	
-	if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y > (DWORD) dwColumns * m_dwBufferRows) 
+	if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y > (DWORD) dwColumns * _settings->bufferRows()) 
 		{
 			::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
 			::SetConsoleScreenBufferSize(m_hStdOutFresh, coordConsoleSize);
 		} 
 	else if (((DWORD)csbi.dwSize.X < dwColumns) 
-					 || ((DWORD)csbi.dwSize.Y < m_dwBufferRows) 
-					 || ((DWORD)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1) != m_dwRows)) 
+					 || ((DWORD)csbi.dwSize.Y < _settings->bufferRows()) 
+					 || ((DWORD)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1) != _settings->rows())) 
 		{
 			::SetConsoleScreenBufferSize(m_hStdOutFresh, coordConsoleSize);
 			::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
@@ -275,12 +274,12 @@ void Console::RefreshScreenBuffer()
 	si.nPos   = (int)m_csbiConsole.srWindow.Top;
 	::FlatSB_SetScrollInfo(m_hWnd, SB_VERT, &si, TRUE);
 	
-	if ((m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1 != m_dwColumns) 
-			|| (m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1 != m_dwRows) 
-			|| (m_csbiConsole.dwSize.Y != m_dwBufferRows)) 
+	if ((m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1 != _settings->columns()) 
+			|| (m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1 != _settings->rows()) 
+			|| (m_csbiConsole.dwSize.Y != _settings->bufferRows())) 
 		{
-			m_dwColumns = m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1;
-			m_dwRows	= m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1;
+			_settings->setColumns(m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1);
+			_settings->setRows(m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1);
 			ResizeConsoleWindow();
 		}
 	
@@ -291,16 +290,16 @@ void Console::RefreshScreenBuffer()
 	coordStart.X		= 0;
 	coordStart.Y		= 0;
 	
-	coordBufferSize.X	= (short)m_dwColumns;
-	coordBufferSize.Y	= (short)m_dwRows;
+	coordBufferSize.X	= (short)_settings->columns();
+	coordBufferSize.Y	= (short)_settings->rows();
 	
 	srRegion.Top		= m_csbiConsole.srWindow.Top;
 	srRegion.Left		= 0;
-	srRegion.Bottom		= (short)(m_csbiConsole.srWindow.Top + m_dwRows - 1);
-	srRegion.Right		= (short)(m_dwColumns - 1);
+	srRegion.Bottom		= (short)(m_csbiConsole.srWindow.Top + _settings->rows() - 1);
+	srRegion.Right		= (short)(_settings->columns() - 1);
 
 	DEL_ARR(m_pScreenBufferNew);
-	m_pScreenBufferNew = new CHAR_INFO[m_dwRows * m_dwColumns];
+	m_pScreenBufferNew = new CHAR_INFO[_settings->rows() * _settings->columns()];
 	
 	::ReadConsoleOutput(m_hStdOutFresh, m_pScreenBufferNew, coordBufferSize, coordStart, &srRegion);
 	
@@ -319,7 +318,7 @@ void Console::RefreshScreenBuffer()
 		{
 			// 1. Windows console title starts with the original title, just see if
 			//    windows titles differ, and if they do, update it.
-			if ((m_strWindowTitle.length() == 0)  &&
+			if ((_settings->windowTitle().empty())  &&
 					(strWinConsoleTitle[m_strWinConsoleTitle.length()] == ' ') &&
 			(strWinConsoleTitle[m_strWinConsoleTitle.length()+1] == '-')) 
 				{
@@ -328,7 +327,7 @@ void Console::RefreshScreenBuffer()
 			else 
 				{
 					strConsoleTitle = 
-						m_strWindowTitle + strWinConsoleTitle.substr(m_strWinConsoleTitle.length());
+						_settings->windowTitle() + strWinConsoleTitle.substr(m_strWinConsoleTitle.length());
 				}
 			
 		} 
@@ -337,13 +336,13 @@ void Console::RefreshScreenBuffer()
 			// 2. Windows console title is completely changed. To set Console title, 
 			//    we need to get Windows console title and concatenate it to our 
 			//    original Console title (if it changed since the last update)
-			if (m_strWindowTitle.length() == 0) 
+			if (_settings->windowTitle().empty()) 
 				{
 					strConsoleTitle = strWinConsoleTitle;
 				} 
 			else 
 				{
-					strConsoleTitle = m_strWindowTitle + tstring(_T(" - ")) + strWinConsoleTitle;
+					strConsoleTitle = _settings->windowTitle() + tstring(_T(" - ")) + strWinConsoleTitle;
 				}
 		}
 	
@@ -362,9 +361,9 @@ void Console::RefreshScreenBuffer()
 void Console::SetScrollbarStuff()
 {
 	
-	if (m_bUseTextBuffer)
+	if (_settings->useTextBuffer())
 		{
-			m_bShowScrollbar = m_dwBufferRows > m_dwRows;
+			m_bShowScrollbar = _settings->bufferRows() > _settings->rows();
 		} 
 	else 
 		{
@@ -372,16 +371,16 @@ void Console::SetScrollbarStuff()
 		}
 	
 	// we don't call InitializeFlatSB due to some problems on Win2k, Windowblinds and new-style scrollbars
-	if (m_nScrollbarStyle != FSB_REGULAR_MODE) ::InitializeFlatSB(m_hWnd);
+	if (_settings->scrollbarStyle() != FSB_REGULAR_MODE) ::InitializeFlatSB(m_hWnd);
 	::FlatSB_ShowScrollBar(m_hWnd, SB_VERT, m_bShowScrollbar);
-	::FlatSB_SetScrollRange(m_hWnd, SB_VERT, 0, m_dwBufferRows-m_dwRows, FALSE);
+	::FlatSB_SetScrollRange(m_hWnd, SB_VERT, 0, _settings->bufferRows() - _settings->rows(), FALSE);
 	
 	// set scrollbar properties
-	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_VSTYLE, m_nScrollbarStyle, FALSE);
-	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_VBKGCOLOR, m_crScrollbarColor, FALSE);
-	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_CXVSCROLL , m_nScrollbarWidth, FALSE);
-	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_CYVSCROLL, m_nScrollbarButtonHeight, FALSE);
-	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_CYVTHUMB, m_nScrollbarThunmbHeight, TRUE);
+	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_VSTYLE, _settings->scrollbarStyle(), FALSE);
+	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_VBKGCOLOR, _settings->scrollbarColor(), FALSE);
+	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_CXVSCROLL , _settings->scrollbarWidth(), FALSE);
+	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_CYVSCROLL, _settings->scrollbarButtonHeight(), FALSE);
+	::FlatSB_SetScrollProp(m_hWnd, WSB_PROP_CYVTHUMB, _settings->scrollbarThunmbHeight(), TRUE);
 }
 
 /////////////////////////////////////////////////////////////////////////////

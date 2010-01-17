@@ -39,6 +39,8 @@ typedef basic_string<TCHAR>			tstring;
 
 #include "defines.h"
 
+#include "configreader.h"
+
 /////////////////////////////////////////////////////////////////////////////
 // Console class
 
@@ -195,7 +197,7 @@ private:
 	void SetScrollbarStuff();
 		
 	// sets default console colors
-	void SetDefaultConsoleColors();
+	//void SetDefaultConsoleColors();
 		
 	// sets window size and position
 	void SetWindowSizeAndPosition();
@@ -347,30 +349,23 @@ public: // public data
 	// Console window handle
 	HWND	m_hWnd;
 
-	// console colors
-	COLORREF	m_arrConsoleColors[16];
 
 private: // private data
-	void _setDefaults();
+	void _resetVars();
+	
+	ConfigSettings* _settings;
 	
 	// readem filename
 	tstring	m_strReadmeFile;
 
 	BOOL	m_bInitializing;
 	BOOL	m_bReloading;
-		
-	tstring	m_strConfigFile;
-	tstring	m_strConfigEditor;
-	tstring m_strConfigEditorParams;
 
 	// one of the RELOAD_NEW_CONFIG_* constants
 	// - specifies relaod behaviour when a new configuration is selected
 	// (auto reload, don't reload, ask user)
 	DWORD	m_dwReloadNewConfigDefault;
 	DWORD	m_dwReloadNewConfig;
-		
-	tstring	m_strShell;
-	tstring	m_strShellCmdLine;
 		
 	// handle to invisible window - used for hiding the taskbar button in tray and 'hidden' modes
 	HWND m_hwndInvisParent;
@@ -393,16 +388,6 @@ private: // private data
 	// brush for painting background
 	HBRUSH	m_hBkBrush;
 
-	// master repaint timer interval (runs independent of changes in the 
-	// console)
-	DWORD	m_dwMasterRepaintInt;
-
-	// change repaint timer interval (when a change occurs, repainting 
-	// will be postponed for this interval)
-	DWORD	m_dwChangeRepaintInt;
-		
-	// icon filename
-	tstring	m_strIconFilename;
 	// program icons
 	HICON	m_hSmallIcon;
 	HICON	m_hBigIcon;
@@ -415,34 +400,16 @@ private: // private data
 
 	// submenu for the XML (config) files
 	HMENU	m_hConfigFilesMenu;
-
-	// set to TRUE if the popup menu is disabled
-	BOOL	m_bPopupMenuDisabled;
 		
 	// Console window title variables
 	// holds the default console title ("console" or the one passed in the cmdline param)
 	tstring m_strWindowTitleDefault;
-	// holds the window title (default title, or the one from the config file)
-	tstring	m_strWindowTitle;
 	// holds the current window title
 	tstring m_strWindowTitleCurrent;
 		
 	// font data
-	tstring	m_strFontName;
-	DWORD	m_dwFontSize;
-	BOOL	m_bBold;
-	BOOL	m_bItalic;
-	BOOL	m_bUseFontColor;
-	COLORREF m_crFontColor;
 	HFONT	m_hFont;
 	HFONT	m_hFontOld;
-		
-	// window X and Y positions
-	int		m_nX;
-	int		m_nY;
-
-	// client area inside border (gives a more 'relaxed' look to windows)
-	int		m_nInsideBorder;
 		
 	// window width and height
 	int		m_nWindowWidth;
@@ -463,123 +430,21 @@ private: // private data
 	int		m_nCharHeight;
 	int		m_nCharWidth;
 
-	// window border type
-	// 0 - none
-	// 1 - regular window
-	// 2 - 1-pixel thin border
-	DWORD	m_dwWindowBorder;
-
 	// scrollbar stuff
 	BOOL	m_bShowScrollbar;
-	int		m_nScrollbarStyle;
-	COLORREF m_crScrollbarColor;
-	int		m_nScrollbarWidth;
-	int		m_nScrollbarButtonHeight;
-	int		m_nScrollbarThunmbHeight;
-
-	// what to do with the taskbar button
-	// if the taskbar button is hidden, or placed in the traybar, you 
-	// can't ALT-TAB to console (take care when using with color key 
-	// transparency :-)
-	// 0 - nothing
-	// 1 - hide it
-	// 2 - put icon to traybar
-	DWORD	m_dwTaskbarButton;
-		
-	// set to TRUE if the window can be dragged by left-click hold
-	BOOL	m_bMouseDragable;
-
-	// snap distance
-	int		m_nSnapDst;
-		
-	// window docking position
-	// 0 - no dock
-	// 1 - top left
-	// 2 - top right
-	// 3 - bottom right
-	// 4 - bottom left
-	DWORD	m_dwDocked;
-
-	// window Z-ordering
-	// 0 - regular
-	// 1 - always on top
-	// 2 - always on bottom
-	DWORD	m_dwOriginalZOrder;
-	DWORD	m_dwCurrentZOrder;
-
-	// Win2000/XP transparency
-	// 0 - none
-	// 1 - alpha blending
-	// 2 - colorkey
-	// 3 - fake transparency
-	DWORD	m_dwTransparency;
-
-	// alpha value for alpha blending (Win2000 and later only!)
-	BYTE	m_byAlpha;
-
-	// alpha value for inactive window
-	BYTE	m_byInactiveAlpha;
-
-	BOOL	m_bBkColorSet;
-	COLORREF m_crBackground;
-
-	// this is used for tinting background images and fake transparencies
-	BOOL	m_bTintSet;
-	BYTE	m_byTintOpacity;
-	BYTE	m_byTintR;
-	BYTE	m_byTintG;
-	BYTE	m_byTintB;
 		
 	// used when background is an image
-	BOOL	m_bBitmapBackground;
-	tstring	m_strBackgroundFile;
 	HDC		m_hdcBackground;
 	HBITMAP	m_hbmpBackground;
 	HBITMAP	m_hbmpBackgroundOld;
-
-	// background attributes
-
-	// one of BACKGROUND_STYLE_ #defines
-	DWORD	m_dwBackgroundStyle;
-	// set to true for relative background
-	BOOL	m_bRelativeBackground;
-	// set to true to extend the background to all monitors
-	BOOL	m_bExtendBackground;
 		
 	// offsets used for multiple monitors and relative backgrounds (fake transparency, too)
 	int		m_nBackgroundOffsetX;
 	int		m_nBackgroundOffsetY;
-
-	// used for showing/hiding main window
-	BOOL	m_bHideWindow;
-	// set to TRUE when the real console is hidden
-	BOOL	m_bHideConsole;
-
-	// timeout used when hiding console window for the first time (some
-	// shells need console window visible during startup)
-	DWORD	m_dwHideConsoleTimeout;
-
-	// if set to TRUE, Console will be started minimized
-	BOOL	m_bStartMinimized;
-		
-		
-	// cursor style
-	// 0 - none
-	// 1 - XTerm
-	// 2 - block cursor
-	// 3 - bar cursor
-	// 4 - console cursor
-	// 5 - horizontal line
-	// 6 - vertical line
-	// 7 - pulse rect
-	// 8 - fading block
-	DWORD	m_dwCursorStyle;
-
-	COLORREF m_crCursorColor;
-		
+	
 	// console screen buffer info for cursor
 	CONSOLE_SCREEN_BUFFER_INFO m_csbiCursor;
-
+	
 	// wether console cursor is visible or not
 	BOOL	m_bCursorVisible;
 
@@ -590,6 +455,9 @@ private: // private data
 		
 	/////////////////////
 	// console stuff
+
+	// used for showing/hiding main window
+	BOOL	m_bHideWindow;
 
 	// console window handle
 	HWND	m_hWndConsole;
@@ -610,21 +478,9 @@ private: // private data
 	// handle to monitor thread
 	HANDLE	m_hMonitorThread;
 
-	// console rows & columns
-	DWORD	m_dwRows;
-	DWORD	m_dwColumns;
-	DWORD	m_dwBufferRows;
-	BOOL	m_bUseTextBuffer;
-
 	// set to one of TEXT_SELECTION_ #defines
 	int		m_nTextSelection;
 
-	// X Windows style copy-on-select
-	BOOL	m_bCopyOnSelect;
-
-	// Inverse the shift behaviour for selecting and dragging
-	BOOL	m_bInverseShift;
-		
 	COORD	m_coordSelOrigin;
 	RECT	m_rectSelection;
 	HDC		m_hdcSelection;
@@ -635,8 +491,6 @@ private: // private data
 	CHAR_INFO*	m_pScreenBuffer;
 	CHAR_INFO*	m_pScreenBufferNew;
 
-	int m_shadowDistance;
-	int m_shadowColor;
 
 	// Console window class names
 	static const TCHAR m_szConsoleClass[];

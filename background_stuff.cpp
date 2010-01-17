@@ -62,7 +62,7 @@ void Console::CreateBackgroundBitmap()
 	if (m_hbmpBackground) ::DeleteObject(m_hbmpBackground);
 	if (m_hdcBackground) ::DeleteDC(m_hdcBackground);
 	
-	if (!m_bBitmapBackground) return;
+	if (! _settings->bitmapBackground()) return;
 	
 	// determine the total size of the background bitmap
 	DWORD	dwPrimaryDisplayWidth	= ::GetSystemMetrics(SM_CXSCREEN);
@@ -71,7 +71,7 @@ void Console::CreateBackgroundBitmap()
 	DWORD	dwBackgroundWidth		= 0;
 	DWORD	dwBackgroundHeight		= 0;
 
-	if (m_bRelativeBackground) 
+	if (_settings->relativeBackground()) 
 		{
 			if (g_bWin2000) 
 				{
@@ -101,9 +101,9 @@ void Console::CreateBackgroundBitmap()
 	fipImage	image;
 	IMAGE_DATA	imageData;
 
-	if (!image.load(T2A(m_strBackgroundFile.c_str()))) 
+	if (!image.load(T2A(_settings->backgroundFile().c_str()))) 
 		{
-			m_bBitmapBackground = FALSE;
+			_settings->setBitmapBackground( false);
 			return;
 		}
 	
@@ -114,20 +114,25 @@ void Console::CreateBackgroundBitmap()
 	image.convertTo24Bits();
 	
 	// ... if needed, tint the background image
-	if (m_bTintSet) 
+	if (_settings->tintSet())
 		{
 			BYTE*	pPixels = image.accessPixels();
-			BYTE*	pPixelsEnd =  pPixels + 3*image.getWidth()*image.getHeight();
+			BYTE*	pPixelsEnd =  pPixels + 3 * image.getWidth() * image.getHeight();
 			BYTE*	pPixelSubel = pPixels;
+			
+			unsigned long opacityPart = (100 - _settings->tintOpacity());
+			unsigned long bPart = _settings->tintB() * _settings->tintOpacity();
+			unsigned long gPart = _settings->tintG() * _settings->tintOpacity();
+			unsigned long rPart = _settings->tintR() * _settings->tintOpacity();
 			
 			while (pPixelSubel < pPixelsEnd) 
 				{
 
-					*pPixelSubel = (BYTE) ((unsigned long)(*pPixelSubel * (100 - m_byTintOpacity) + m_byTintB*m_byTintOpacity)/100); 
+					*pPixelSubel = (BYTE) ((unsigned long)(*pPixelSubel * opacityPart + bPart) / 100); 
 					++pPixelSubel;
-					*pPixelSubel = (BYTE) ((unsigned long)(*pPixelSubel * (100 - m_byTintOpacity) + m_byTintG*m_byTintOpacity)/100);
+					*pPixelSubel = (BYTE) ((unsigned long)(*pPixelSubel * opacityPart + gPart) / 100);
 					++pPixelSubel;
-					*pPixelSubel = (BYTE) ((unsigned long)(*pPixelSubel * (100 - m_byTintOpacity) + m_byTintR*m_byTintOpacity)/100);
+					*pPixelSubel = (BYTE) ((unsigned long)(*pPixelSubel * opacityPart + rPart) / 100);
 					++pPixelSubel;
 				}
 		}		
@@ -136,12 +141,12 @@ void Console::CreateBackgroundBitmap()
 	HBITMAP		hbmpImage		= NULL;
 	HBITMAP		hbmpImageOld	= NULL;
 
-	if (m_dwBackgroundStyle == BACKGROUND_STYLE_RESIZE) 
+	if (_settings->backgroundStyle() == BACKGROUND_STYLE_RESIZE) 
 		{
 
-			if (m_bRelativeBackground) 
+			if (_settings->relativeBackground()) 
 				{
-					if (m_bExtendBackground) 
+					if (_settings->extendBackground()) 
 						{
 							imageData.dwImageWidth	= dwBackgroundWidth;
 							imageData.dwImageHeight	= dwBackgroundHeight;
@@ -194,7 +199,7 @@ void Console::CreateBackgroundBitmap()
 	// bitmap doesn't cover the entire background, 
 	COLORREF crBackground;
 
-	if (m_dwTransparency == TRANSPARENCY_FAKE) 
+	if (_settings->transparency() == TRANSPARENCY_FAKE) 
 		{
 			// get desktop background color
 			HKEY hkeyColors;
@@ -218,14 +223,14 @@ void Console::CreateBackgroundBitmap()
 		} 
 	else
 		{
-			::CopyMemory(&crBackground, &m_crBackground, sizeof(COLORREF));
+			::CopyMemory(&crBackground, _settings->backgroundPtr(), sizeof(COLORREF));
 		}
 	
 	HBRUSH hBkBrush = ::CreateSolidBrush(crBackground);
 	::FillRect(m_hdcBackground, &rectBackground, hBkBrush);
 	::DeleteObject(hBkBrush);
 	
-	if (m_dwBackgroundStyle == BACKGROUND_STYLE_TILE) 
+	if (_settings->backgroundStyle() == BACKGROUND_STYLE_TILE) 
 		{
 			// we're tiling the image, starting at coordinates (0, 0) of the virtual screen
 			DWORD dwX = 0;
@@ -261,9 +266,9 @@ void Console::CreateBackgroundBitmap()
 				}
 		
 		}
-	else if (m_bExtendBackground || !m_bRelativeBackground) 
+	else if (_settings->extendBackground() || !_settings->relativeBackground()) 
 		{
-			switch (m_dwBackgroundStyle) 
+			switch (_settings->backgroundStyle()) 
 				{
 				case BACKGROUND_STYLE_RESIZE :
 					::BitBlt(
@@ -322,7 +327,7 @@ BOOL CALLBACK Console::BackgroundEnumProc(HMONITOR hMonitor, HDC hdcMonitor,
 	DWORD	dwPrimaryDisplayHeight	= ::GetSystemMetrics(SM_CYSCREEN);
 	
 	// center the image according to current display's size and position
-	switch (g_pConsole->m_dwBackgroundStyle) 
+	switch (g_pConsole->_settings->backgroundStyle()) 
 		{
 		
 		case BACKGROUND_STYLE_RESIZE :

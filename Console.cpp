@@ -69,7 +69,6 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 	: m_hWnd(NULL)
 	, m_bInitializing(TRUE)
 	, m_bReloading(FALSE)
-	, m_strShellCmdLine(pszShellCmdLine)
 	, m_hdcConsole(NULL)
 	, m_hdcWindow(NULL)
 	, m_hbmpConsole(NULL)
@@ -81,17 +80,11 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 	, m_strWindowTitleDefault(_tcslen(pszConsoleTitle) == 0 ? _T("console") : pszConsoleTitle)
 	, m_hFont(NULL)
 	, m_hFontOld(NULL)
-	, m_shadowDistance(0)
-	, m_shadowColor(0)
-	, m_nX(0)
-	, m_nY(0)
-	, m_nInsideBorder(0)
 	, m_hdcBackground(NULL)
 	, m_hbmpBackground(NULL)
 	, m_hbmpBackgroundOld(NULL)
 	, m_nBackgroundOffsetX(0)
 	, m_nBackgroundOffsetY(0)
-	, m_dwHideConsoleTimeout(0)
 	, m_pCursor(NULL)
 	, m_hWndConsole(NULL)
 	, m_hStdOut(NULL)
@@ -100,16 +93,19 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 	, m_hConsoleProcess(NULL)
 	, m_hMonitorThread(NULL)
 	, m_nTextSelection(TEXT_SELECTION_NONE)
-	, m_bInverseShift(FALSE)
 	, m_hdcSelection(NULL)
 	, m_hbmpSelection(NULL)
 	, m_hbmpSelectionOld(NULL)
 	, m_hbrushSelection(::CreateSolidBrush(RGB(0xff, 0xff, 0xff)))
 	, m_pScreenBuffer(NULL)
 	, m_pScreenBufferNew(NULL)
+	, m_bShowScrollbar(FALSE)
 {
-	_setDefaults();
-	m_strConfigFile = GetFullFilename(pszConfigFile);
+	_resetVars();
+	_settings = new ConfigSettings();
+	
+	_settings->setShellCmdLine(pszShellCmdLine);
+	_settings->setConfigFile(GetFullFilename(pszConfigFile));
 
 	if (!_tcsicmp(pszReloadNewConfig, _T("yes"))) 
 		{
@@ -124,8 +120,8 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 			m_dwReloadNewConfigDefault = RELOAD_NEW_CONFIG_PROMPT;
 		}
 	
-	m_dwReloadNewConfig = m_dwReloadNewConfigDefault;
-		
+	_settings->setReloadNewConfig(m_dwReloadNewConfigDefault);
+	
 	m_mouseCursorOffset.x = 0;
 	m_mouseCursorOffset.y = 0;
 
@@ -143,11 +139,12 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 
 	strExeDir = strExeDir.substr(0, strExeDir.rfind(_T("\\")));
 	strExeDir += TCHAR('\\');
-
+	
+	
 	// if no config file is given, get console.xml from the startup directory
-	if (m_strConfigFile.empty()) 
+	if (_settings->configFile().empty()) 
 		{
-			m_strConfigFile = strExeDir + tstring(_T("console.xml"));
+			_settings->setConfigFile(strExeDir + tstring(_T("console.xml")));
 		}
 	
 	// get readme filename
@@ -156,7 +153,8 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 	::ZeroMemory(&m_csbiCursor, sizeof(CONSOLE_SCREEN_BUFFER_INFO));
 	::ZeroMemory(&m_csbiConsole, sizeof(CONSOLE_SCREEN_BUFFER_INFO));
 	
-	SetDefaultConsoleColors();
+	//SetDefaultConsoleColors();
+	_resetVars();
 }
 
 Console::~Console() 
@@ -178,6 +176,29 @@ Console::~Console()
 	::FreeConsole();
 }
 
+
+void Console::_resetVars()
+{
+	m_hwndInvisParent		= NULL;
+	m_hSmallIcon			= NULL;
+	m_hBigIcon				= NULL;
+	m_hPopupMenu			= NULL;
+	m_hConfigFilesMenu		= NULL;
+	m_strWindowTitleCurrent	= m_strWindowTitleDefault;
+
+	m_nWindowWidth			= 0;
+	m_nWindowHeight			= 0;
+	m_nXBorderSize			= 0;
+	m_nYBorderSize			= 0;
+	m_nCaptionSize			= 0;
+	m_nClientWidth			= 0;
+	m_nClientHeight			= 0;
+	m_nCharHeight			= 0;
+	m_nCharWidth			= 0;
+
+	m_bHideWindow			= FALSE;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 
 
@@ -191,7 +212,9 @@ BOOL Console::Create(TCHAR* pszConfigPath)
 {
 	UNREFERENCED_PARAMETER(pszConfigPath);
 	
-	if (!GetOptions()) return FALSE;
+	if (!_settings->load()) return FALSE;
+	
+	m_strWindowTitleCurrent = _settings->windowTitle();
 	
 	if (!RegisterWindowClasses()) return FALSE;
 	
@@ -222,7 +245,10 @@ BOOL Console::Create(TCHAR* pszConfigPath)
 	::ResumeThread(m_hMonitorThread);
 	
 	// set the long repaint timer
-	if (m_dwMasterRepaintInt) ::SetTimer(m_hWnd, TIMER_REPAINT_MASTER, m_dwMasterRepaintInt, NULL);
+	if (_settings->masterRepaintInt()) 
+		{
+			::SetTimer(m_hWnd, TIMER_REPAINT_MASTER, _settings->masterRepaintInt(), NULL);
+		}
 	
 	m_bInitializing = FALSE;
 	
@@ -230,13 +256,14 @@ BOOL Console::Create(TCHAR* pszConfigPath)
 	::DragAcceptFiles(m_hWnd, TRUE);
 
 	RefreshScreenBuffer();
-	::CopyMemory(m_pScreenBuffer, m_pScreenBufferNew, sizeof(CHAR_INFO) * m_dwRows * m_dwColumns);
+	::CopyMemory(m_pScreenBuffer, m_pScreenBufferNew, 
+							 sizeof(CHAR_INFO) * _settings->rows() * _settings->columns());
 	RepaintWindow();
 	::UpdateWindow(m_hWnd);
 
-	if (m_bStartMinimized) 
+	if (_settings->startMinimized()) 
 		{
-			if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) 
+			if (_settings->taskbarButton() > TASKBAR_BUTTON_NORMAL) 
 				{
 					m_bHideWindow = TRUE;
 				} 
@@ -312,53 +339,61 @@ BOOL Console::SetupMenus()
 	MENUITEMINFO	mii;
 	
 	// setup popup menu
-	if ((m_hPopupMenu = ::LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_POPUP_MENU))) == NULL) return FALSE;
-	if ((m_hConfigFilesMenu = ::CreateMenu()) == NULL) return FALSE;
+	if ((m_hPopupMenu = ::LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_POPUP_MENU))) == NULL) 
+		{ return FALSE; }
+	
+	if ((m_hConfigFilesMenu = ::CreateMenu()) == NULL) { return FALSE; }
 	
 	// add stuff to the system menu
-	TCHAR*			arrMenuItems[] = {
-		_T("Read&me"), 
-		_T("&About Console"), 
-		_T(""), 
-		_T("&Copy"), 
-		_T("&Paste"), 
-		_T(""), 
-		_T("Always on &top"), 
-		_T("&Hide console"), 
-		_T(""), 
-		_T("&Select configuration file"), 
-		_T("&Edit configuration file"), 
-		_T("&Reload settings"), 
-		_T("")};
+	TCHAR*			arrMenuItems[] = 
+		{
+			_T("Read&me"), 
+			_T("&About Console"), 
+			_T(""), 
+			_T("&Copy"), 
+			_T("&Paste"), 
+			_T(""), 
+			_T("Always on &top"), 
+			_T("&Hide console"), 
+			_T(""), 
+			_T("&Select configuration file"), 
+			_T("&Edit configuration file"), 
+			_T("&Reload settings"), 
+			_T(""),
+		};
 	
-	DWORD			arrMenuTypes[] = {
-		MFT_STRING, 
-		MFT_STRING, 
-		MFT_SEPARATOR, 
-		MFT_STRING, 
-		MFT_STRING, 
-		MFT_SEPARATOR, 
-		MFT_STRING, 
-		MFT_STRING, 
-		MFT_SEPARATOR, 
-		MFT_STRING, 
-		MFT_STRING, 
-		MFT_STRING, 
-		MFT_SEPARATOR};
-	DWORD			arrMenuIDs[] = {
-		ID_SHOW_README_FILE, 
-		ID_ABOUT, 
-		0, 
-		ID_COPY, 
-		ID_PASTE, 
-		0, 
-		ID_TOGGLE_ONTOP, 
-		ID_HIDE_CONSOLE, 
-		0, 
-		ID_SEL_CONFIG_FILE, 
-		ID_EDIT_CONFIG_FILE, 
-		ID_RELOAD_SETTINGS, 
-		0};
+	DWORD			arrMenuTypes[] = 
+		{
+			MFT_STRING, 
+			MFT_STRING, 
+			MFT_SEPARATOR, 
+			MFT_STRING, 
+			MFT_STRING, 
+			MFT_SEPARATOR, 
+			MFT_STRING, 
+			MFT_STRING, 
+			MFT_SEPARATOR, 
+			MFT_STRING, 
+			MFT_STRING, 
+			MFT_STRING, 
+			MFT_SEPARATOR,
+		};
+	DWORD			arrMenuIDs[] = 
+		{
+			ID_SHOW_README_FILE, 
+			ID_ABOUT, 
+			0, 
+			ID_COPY, 
+			ID_PASTE, 
+			0, 
+			ID_TOGGLE_ONTOP, 
+			ID_HIDE_CONSOLE, 
+			0, 
+			ID_SEL_CONFIG_FILE, 
+			ID_EDIT_CONFIG_FILE, 
+			ID_RELOAD_SETTINGS, 
+			0,
+		};
 	
 	m_hSysMenu = ::GetSystemMenu(m_hWnd, FALSE);
 	
@@ -406,7 +441,7 @@ BOOL Console::CreateConsoleWindow()
 {
 	// create the window
 	DWORD dwWindowStyle = WS_VSCROLL;
-	switch (m_dwWindowBorder) 
+	switch (_settings->windowBorder()) 
 		{
 		case BORDER_NONE : 
 			dwWindowStyle |= WS_POPUPWINDOW & ~WS_BORDER;
@@ -425,36 +460,41 @@ BOOL Console::CreateConsoleWindow()
 	// If the taskbar style is set to hide or tray, we create an invisible window
 	// to parent the main window to. This hides the taskbar button while allowing
 	// us to use the normal title bar.
-	if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) 
+	if (_settings->taskbarButton() > TASKBAR_BUTTON_NORMAL) 
 		{
-			if ((m_hwndInvisParent = ::CreateWindowEx(
-																								WS_EX_TOOLWINDOW,
-																								Console::m_szHiddenParentClass,
-																								_T(""),
-																								WS_POPUP,
-																								0,
-																								0,
-																								0,
-																								0,
-																								NULL,
-																								NULL,
-																								g_hInstance,
-																								NULL)) == NULL) 
+			if ((m_hwndInvisParent = 
+					 ::CreateWindowEx(
+														WS_EX_TOOLWINDOW,
+														Console::m_szHiddenParentClass,
+														_T(""),
+														WS_POPUP,
+														0,
+														0,
+														0,
+														0,
+														NULL,
+														NULL,
+														g_hInstance,
+														NULL)) == NULL) 
 				{
 					return FALSE;
 				}
 			
 			// don't let the user minimize it if there's no way to restore it
-			if (m_dwTaskbarButton == TASKBAR_BUTTON_HIDE) dwWindowStyle &= ~WS_MINIMIZEBOX;
+			if (_settings->taskbarButton() == TASKBAR_BUTTON_HIDE)
+				{
+					dwWindowStyle &= ~WS_MINIMIZEBOX;
+				}
 		}
 	
-	
 	if ((m_hWnd = ::CreateWindowEx(
-																 0, //m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL ? WS_EX_TOOLWINDOW : 0,
+																 0, 
+																 //m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL ? WS_EX_TOOLWINDOW : 0,
+																 
 																 Console::m_szConsoleClass, 
-																 m_strWindowTitle.c_str(),
+																 _settings->windowTitle().c_str(),
 																 dwWindowStyle,
-																 ((m_nX == -1) || (m_nY == -1)) ? CW_USEDEFAULT : 0,
+																 ((_settings->getX() == -1) || (_settings->getY() == -1)) ? CW_USEDEFAULT : 0,
 																 0,
 																 0,
 																 0,
@@ -466,13 +506,13 @@ BOOL Console::CreateConsoleWindow()
 			return FALSE;
 		}
 	
-	if ((m_nX == -1) || (m_nY == -1)) 
+	if ((_settings->getX() == -1) || (_settings->getY() == -1)) 
 		{
 			RECT rectWindow;
 			
 			::GetWindowRect(m_hWnd, &rectWindow);
-			m_nX = (int)rectWindow.left;
-			m_nY = (int)rectWindow.top;
+			_settings->setX((int)rectWindow.left);
+			_settings->setY((int)rectWindow.top);
 		}
 
 	return TRUE;
@@ -490,12 +530,13 @@ void Console::CreateNewFont()
 	if (m_hFont) ::DeleteObject(m_hFont);
 	
 	m_hFont = ::CreateFont(
-												 -MulDiv(m_dwFontSize, ::GetDeviceCaps(m_hdcConsole, LOGPIXELSY), 72),
+												 -MulDiv(_settings->fontSize(),
+																 ::GetDeviceCaps(m_hdcConsole, LOGPIXELSY), 72),
 												 0,
 												 0,
 												 0,
-												 m_bBold ? FW_BOLD : 0,
-												 m_bItalic,
+												 _settings->bold() ? FW_BOLD : 0,
+												 _settings->italic(),
 												 FALSE,
 												 FALSE,
 												 DEFAULT_CHARSET,						
@@ -503,7 +544,7 @@ void Console::CreateNewFont()
 												 CLIP_DEFAULT_PRECIS,
 												 DEFAULT_QUALITY,
 												 DEFAULT_PITCH,
-												 m_strFontName.c_str());
+												 _settings->fontName().c_str());
 	
 	m_hFontOld = (HFONT)::SelectObject(m_hdcConsole, m_hFont);
 }
@@ -517,7 +558,7 @@ void Console::CreateNewBrush()
 {
 	// create a new background brush
 	if (m_hBkBrush) ::DeleteObject(m_hBkBrush);
-	m_hBkBrush = ::CreateSolidBrush(m_crBackground);
+	m_hBkBrush = ::CreateSolidBrush(_settings->background());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -528,46 +569,48 @@ void Console::CreateNewBrush()
 void Console::CreateCursor() 
 {
 	
-	switch (m_dwCursorStyle) 
+	switch (_settings->cursorStyle()) 
 		{
 		case CURSOR_STYLE_XTERM :
-			m_pCursor = (Cursor*)new XTermCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new XTermCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_BLOCK :
-			m_pCursor = (Cursor*)new BlockCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new BlockCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_NBBLOCK :
-			m_pCursor = (Cursor*)new NBBlockCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new NBBlockCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_PULSEBLOCK :
-			m_pCursor = (Cursor*)new PulseBlockCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new PulseBlockCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_BAR :
-			m_pCursor = (Cursor*)new BarCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new BarCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_CONSOLE :
-			m_pCursor = (Cursor*)new ConsoleCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new ConsoleCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_NBHLINE :
-			m_pCursor = (Cursor*)new NBHLineCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new NBHLineCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_HLINE :
-			m_pCursor = (Cursor*)new HLineCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new HLineCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_VLINE :
-			m_pCursor = (Cursor*)new VLineCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new VLineCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_RECT :
-			m_pCursor = (Cursor*)new RectCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new RectCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_NBRECT :
-			m_pCursor = (Cursor*)new NBRectCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new NBRectCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_PULSERECT :
-			m_pCursor = (Cursor*)new PulseRectCursor(m_hWnd, m_hdcConsole, m_crCursorColor);
+			m_pCursor = new PulseRectCursor(m_hWnd, m_hdcConsole, _settings->cursorColor());
 			break;
 		case CURSOR_STYLE_FADEBLOCK :
-			m_pCursor = (Cursor*)new FadeBlockCursor(m_hWnd, m_hdcConsole, m_crCursorColor, m_crBackground);
+			m_pCursor = new FadeBlockCursor(m_hWnd, m_hdcConsole, 
+																			_settings->cursorColor(), 
+																			_settings->background());
 			break;
 	}
 }
@@ -584,20 +627,20 @@ void Console::CalcWindowSize()
 	::GetTextMetrics(m_hdcConsole, &textMetric);
 	
 	m_nCharHeight	= textMetric.tmHeight;
-	m_nClientHeight	= m_dwRows * m_nCharHeight + 2*m_nInsideBorder;
+	m_nClientHeight	= _settings->rows() * m_nCharHeight + (2 * _settings->insideBorder());
 	
 	if (!(textMetric.tmPitchAndFamily & TMPF_FIXED_PITCH)) 
 		{
 			// fixed pitch font (TMPF_FIXED_PITCH is cleared!!!)
 			m_nCharWidth= textMetric.tmAveCharWidth;
-			m_nClientWidth	= m_dwColumns * m_nCharWidth + 2*m_nInsideBorder;
+			m_nClientWidth	= _settings->columns() * m_nCharWidth + 2 * _settings->insideBorder();
 		} 
 	else 
 		{
 			// variable pitch font
 			int nCharWidth;
 			::GetCharWidth32(m_hdcConsole, _TCHAR('m'), _TCHAR('m'), &nCharWidth);
-			m_nClientWidth	= m_dwColumns * nCharWidth;
+			m_nClientWidth	= _settings->columns() * nCharWidth;
 		}
 	
 	WINDOWINFO wndInfo;
@@ -614,10 +657,11 @@ void Console::CalcWindowSize()
 	
 	m_nXBorderSize = wndInfo.cxWindowBorders;
 	m_nYBorderSize = wndInfo.cyWindowBorders;
-	m_nCaptionSize = (titlebarInfo.rgstate[0] & STATE_SYSTEM_INVISIBLE) ? 
-		0 : titlebarInfo.rcTitleBar.bottom - titlebarInfo.rcTitleBar.top;
+	m_nCaptionSize = ((titlebarInfo.rgstate[0] & STATE_SYSTEM_INVISIBLE) 
+										? 0 
+										: titlebarInfo.rcTitleBar.bottom - titlebarInfo.rcTitleBar.top);
 	
-	switch (m_dwWindowBorder) 
+	switch (_settings->windowBorder()) 
 		{
 		case BORDER_NONE :
 			m_nWindowHeight	= m_nClientHeight;
@@ -626,7 +670,6 @@ void Console::CalcWindowSize()
 			
 		case BORDER_REGULAR : 
 			{
-				
 				TRACE(_T("m_nXBorderSize: %i\n"), m_nXBorderSize);
 				TRACE(_T("m_nYBorderSize: %i\n"), m_nYBorderSize);
 				TRACE(_T("m_nCaptionSize: %i\n"), m_nCaptionSize);
@@ -643,7 +686,7 @@ void Console::CalcWindowSize()
 			m_nWindowWidth	= m_nClientWidth + 2*m_nXBorderSize;
 		}
 	
-	if (m_bShowScrollbar) m_nWindowWidth += m_nScrollbarWidth;
+	if (m_bShowScrollbar) { m_nWindowWidth += _settings->scrollbarWidth(); }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -655,16 +698,18 @@ void Console::SetWindowTransparency()
 {
 	
 	// set alpha transparency (Win2000 and later only!)
-	if (g_bWin2000 && ((m_dwTransparency == TRANSPARENCY_ALPHA) 
-										 || (m_dwTransparency == TRANSPARENCY_COLORKEY))) 
+	if (g_bWin2000 && ((_settings->transparency() == TRANSPARENCY_ALPHA) 
+										 || (_settings->transparency() == TRANSPARENCY_COLORKEY))) 
 		{
 			
 			::SetWindowLong(m_hWnd, GWL_EXSTYLE, ::GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-			g_pfnSetLayeredWndAttr(m_hWnd, m_crBackground, m_byAlpha, 
-														 m_dwTransparency == TRANSPARENCY_ALPHA ? LWA_ALPHA : LWA_COLORKEY);
+			g_pfnSetLayeredWndAttr(m_hWnd, _settings->background(), _settings->alpha(), 
+														 (_settings->transparency() == TRANSPARENCY_ALPHA 
+															? LWA_ALPHA 
+															: LWA_COLORKEY));
 			
 		} 
-	else if (m_dwTransparency == TRANSPARENCY_FAKE) 
+	else if (_settings->transparency() == TRANSPARENCY_FAKE) 
 		{
 			// get wallpaper settings
 			HKEY hkeyDesktop;
@@ -682,10 +727,9 @@ void Console::SetWindowTransparency()
 			
 					if (_tcslen(szData) > 0) 
 						{
-							m_bBitmapBackground = TRUE;
-							m_strBackgroundFile		= szData;
-							m_bRelativeBackground	= TRUE;
-							m_bExtendBackground		= FALSE;
+							_settings->setBitmapBackground(szData);
+							_settings->setRelativeBackground(true);
+							_settings->setExtendBackground(false);
 							
 							// get wallpaper style and tile flag
 							dwDataSize = MAX_PATH;
@@ -704,51 +748,21 @@ void Console::SetWindowTransparency()
 							
 							if (dwTileWallpaper == 1) 
 								{
-									m_dwBackgroundStyle = BACKGROUND_STYLE_TILE;
+									_settings->setBackgroundStyle(BACKGROUND_STYLE_TILE);
 								}
 							else
 								{
 									
 									if (dwWallpaperStyle == 0) 
-										{
-											m_dwBackgroundStyle = BACKGROUND_STYLE_CENTER;
-										} 
+										{ _settings->setBackgroundStyle(BACKGROUND_STYLE_CENTER); } 
 									else 
-										{
-											m_dwBackgroundStyle = BACKGROUND_STYLE_RESIZE;
-										}
+										{ _settings->setBackgroundStyle(BACKGROUND_STYLE_RESIZE); }
 								}
 						}
 					
 					::RegCloseKey(hkeyDesktop);
 				}
 		}
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::SetDefaultConsoleColors() 
-{
-	
-	m_arrConsoleColors[0]	= 0x000000;
-	m_arrConsoleColors[1]	= 0x800000;
-	m_arrConsoleColors[2]	= 0x008000;
-	m_arrConsoleColors[3]	= 0x808000;
-	m_arrConsoleColors[4]	= 0x000080;
-	m_arrConsoleColors[5]	= 0x800080;
-	m_arrConsoleColors[6]	= 0x008080;
-	m_arrConsoleColors[7]	= 0xC0C0C0;
-	m_arrConsoleColors[8]	= 0x808080;
-	m_arrConsoleColors[9]	= 0xFF0000;
-	m_arrConsoleColors[10]	= 0x00FF00;
-	m_arrConsoleColors[11]	= 0xFFFF00;
-	m_arrConsoleColors[12]	= 0x0000FF;
-	m_arrConsoleColors[13]	= 0xFF00FF;
-	m_arrConsoleColors[14]	= 0x00FFFF;
-	m_arrConsoleColors[15]	= 0xFFFFFF;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -765,35 +779,35 @@ void Console::SetWindowSizeAndPosition()
 	DWORD   dwTop			= ::GetSystemMetrics(g_bWin2000 ? SM_YVIRTUALSCREEN : 0);
 	DWORD   dwLeft			= ::GetSystemMetrics(g_bWin2000 ? SM_XVIRTUALSCREEN : 0);
 	
-	switch (m_dwDocked) 
+	switch (_settings->docked()) 
 		{
 		case DOCK_TOP_LEFT:
 			// top left
-			m_nX = dwLeft;
-			m_nY = dwTop;
+			_settings->setX(dwLeft);
+			_settings->setY(dwTop);
 			break;
 			
 		case DOCK_TOP_RIGHT:
 			// top right
-			m_nX = dwScreenWidth - m_nWindowWidth;
-			m_nY = dwTop;
+			_settings->setX( dwScreenWidth - m_nWindowWidth);
+			_settings->setY( dwTop);
 			break;
 			
 		case DOCK_BOTTOM_RIGHT:
 			// bottom right
-			m_nX = dwScreenWidth - m_nWindowWidth;
-			m_nY = dwScreenHeight - m_nWindowHeight;
+			_settings->setX( dwScreenWidth - m_nWindowWidth);
+			_settings->setY( dwScreenHeight - m_nWindowHeight);
 			break;
 			
 		case DOCK_BOTTOM_LEFT:
 			// bottom left
-			m_nX = dwLeft;
-			m_nY = dwScreenHeight - m_nWindowHeight;
+			_settings->setX( dwLeft);
+			_settings->setY( dwScreenHeight - m_nWindowHeight);
 			break;
 		}
 	
 	HWND hwndZ;
-	switch (m_dwCurrentZOrder) 
+	switch (_settings->currentZOrder()) 
 		{
 		case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
 		case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
@@ -804,8 +818,8 @@ void Console::SetWindowSizeAndPosition()
 	::SetWindowPos(
 								 m_hWnd, 
 								 hwndZ, 
-								 m_nX, 
-								 m_nY, 
+								 _settings->getX(), 
+								 _settings->getY(), 
 								 m_nWindowWidth, 
 								 m_nWindowHeight, 
 								 0);
@@ -831,25 +845,25 @@ void Console::DestroyCursor()
 BOOL Console::StartShellProcess() 
 {
 	
-	if (m_strShell.length() == 0) 
+	if (_settings->shell().empty()) 
 		{
 			TCHAR	szComspec[MAX_PATH];
 		
 			if (::GetEnvironmentVariable(_T("COMSPEC"), szComspec, MAX_PATH) > 0) 
 				{
-					m_strShell = szComspec;		
+					_settings->setShell( szComspec);
 				} 
 			else
 				{
-					m_strShell = _T("cmd.exe");
+					_settings->setShell( _T("cmd.exe"));
 				}
 		}
 
-	tstring	strShellCmdLine(m_strShell);
-	if (m_strShellCmdLine.length() > 0) 
+	tstring	strShellCmdLine(_settings->shell());
+	if (! _settings->shellCmdLine().empty()) 
 		{
 			strShellCmdLine += _T(" ");
-			strShellCmdLine += m_strShellCmdLine;
+			strShellCmdLine += _settings->shellCmdLine();
 		}
 
 //	strShellCmdLine = "cmd.exe";
@@ -893,10 +907,10 @@ BOOL Console::StartShellProcess()
 			return FALSE;
 		}
 	
-	if (m_dwHideConsoleTimeout > 0) 
+	if (_settings->hideConsoleTimeout() > 0) 
 		{
 			::ShowWindow(m_hWndConsole, SW_MINIMIZE);
-			::SetTimer(m_hWnd, TIMER_SHOW_HIDE_CONSOLE, m_dwHideConsoleTimeout, NULL);
+			::SetTimer(m_hWnd, TIMER_SHOW_HIDE_CONSOLE, _settings->hideConsoleTimeout(), NULL);
 		} 
 	else 
 		{
@@ -925,7 +939,7 @@ BOOL Console::StartShellProcess()
 
 DWORD Console::GetChangeRate() 
 {
-	DWORD dwCount				= m_dwRows * m_dwColumns;
+	DWORD dwCount				= _settings->rows() * _settings->columns();
 	DWORD dwChangedPositions	= 0;
 	
 	for (DWORD i = 0; i < dwCount; ++i) 
@@ -954,8 +968,8 @@ void Console::ShowHideWindow()
 
 void Console::ShowHideConsole() 
 {
-	::ShowWindow(m_hWndConsole, m_bHideConsole ? SW_HIDE : SW_SHOWNORMAL);
-	if (!m_bHideConsole) ::SetForegroundWindow(m_hWndConsole);
+	::ShowWindow(m_hWndConsole, _settings->hideConsole() ? SW_HIDE : SW_SHOWNORMAL);
+	if (!_settings->hideConsole()) ::SetForegroundWindow(m_hWndConsole);
 	UpdateHideConsoleMenuItem();
 }
 
@@ -977,17 +991,17 @@ void Console::ShowHideConsoleTimeout()
 
 void Console::ToggleWindowOnTop() 
 {
-	if (m_dwCurrentZOrder == m_dwOriginalZOrder) 
+	if (_settings->currentZOrder() == _settings->originalZOrder()) 
 		{
-			m_dwCurrentZOrder	= Z_ORDER_ONTOP;
+			_settings->setCurrentZOrder(Z_ORDER_ONTOP);
 		} 
 	else 
 		{
-			m_dwCurrentZOrder = m_dwOriginalZOrder;
+			_settings->setCurrentZOrder(_settings->originalZOrder());
 		}
 	
 	HWND hwndZ;
-	switch (m_dwCurrentZOrder) 
+	switch (_settings->currentZOrder()) 
 		{
 		case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
 		case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
@@ -1036,7 +1050,7 @@ BOOL Console::HandleMenuCommand(unsigned int dwID)
 			return FALSE;
 		
 		case ID_HIDE_CONSOLE:
-			m_bHideConsole = !m_bHideConsole;
+			_settings->setHideConsole(!_settings->hideConsole());
 			ShowHideConsole();
 			return FALSE;
 		
@@ -1057,7 +1071,7 @@ BOOL Console::HandleMenuCommand(unsigned int dwID)
 			return FALSE;
 		
 		case SC_MINIMIZE:
-			if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) 
+			if (_settings->taskbarButton() > TASKBAR_BUTTON_NORMAL) 
 				{
 					m_bHideWindow = !m_bHideWindow;
 					ShowHideWindow();
@@ -1074,9 +1088,9 @@ BOOL Console::HandleMenuCommand(unsigned int dwID)
 			TCHAR	szFilename[MAX_PATH];
 			::ZeroMemory(szFilename, sizeof(szFilename));
 			::GetMenuString(m_hConfigFilesMenu, dwID, szFilename, MAX_PATH, MF_BYCOMMAND);
-			m_strConfigFile = tstring(szFilename);
+			_settings->setConfigFile(szFilename);
 			
-			if (m_dwReloadNewConfig == RELOAD_NEW_CONFIG_PROMPT) 
+			if (_settings->reloadNewConfig() == RELOAD_NEW_CONFIG_PROMPT) 
 				{
 					if (::MessageBox(
 													 m_hWndConsole, 
@@ -1087,7 +1101,7 @@ BOOL Console::HandleMenuCommand(unsigned int dwID)
 							ReloadSettings();
 						}
 				} 
-			else if (m_dwReloadNewConfig == RELOAD_NEW_CONFIG_YES) 
+			else if (_settings->reloadNewConfig() == RELOAD_NEW_CONFIG_YES) 
 				{
 					ReloadSettings();
 				}
@@ -1106,9 +1120,9 @@ BOOL Console::HandleMenuCommand(unsigned int dwID)
 void Console::UpdateOnTopMenuItem() 
 {
 	::CheckMenuItem(::GetSubMenu(m_hPopupMenu, 0), ID_TOGGLE_ONTOP, 
-									MF_BYCOMMAND | ((m_dwCurrentZOrder == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
+									MF_BYCOMMAND | ((_settings->currentZOrder() == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
 	::CheckMenuItem(m_hSysMenu, ID_TOGGLE_ONTOP, 
-									MF_BYCOMMAND | ((m_dwCurrentZOrder == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
+									MF_BYCOMMAND | ((_settings->currentZOrder() == Z_ORDER_ONTOP) ? MF_CHECKED : MF_UNCHECKED));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1119,9 +1133,9 @@ void Console::UpdateOnTopMenuItem()
 void Console::UpdateHideConsoleMenuItem() 
 {
 	::CheckMenuItem(::GetSubMenu(m_hPopupMenu, 0), ID_HIDE_CONSOLE, 
-									MF_BYCOMMAND | (m_bHideConsole ? MF_CHECKED : MF_UNCHECKED));
+									MF_BYCOMMAND | (_settings->hideConsole() ? MF_CHECKED : MF_UNCHECKED));
 	::CheckMenuItem(m_hSysMenu, ID_HIDE_CONSOLE, 
-									MF_BYCOMMAND | (m_bHideConsole ? MF_CHECKED : MF_UNCHECKED));
+									MF_BYCOMMAND | (_settings->hideConsole() ? MF_CHECKED : MF_UNCHECKED));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1146,8 +1160,8 @@ void Console::UpdateConfigFilesSubmenu()
 	::ZeroMemory(&wfd, sizeof(WIN32_FIND_DATA));
 	
 	// create the search mask...
-	int		nBackslashPos = m_strConfigFile.rfind(_TCHAR('\\'));
-	tstring	strConfigFileDir(m_strConfigFile.substr(0, nBackslashPos+1));
+	int		nBackslashPos = _settings->configFile().rfind(_TCHAR('\\'));
+	tstring	strConfigFileDir(_settings->configFile().substr(0, nBackslashPos+1));
 	tstring	strSearchFileMask(strConfigFileDir + tstring(_T("*.xml")));
 	
 	// ... and enumearate files
@@ -1171,7 +1185,7 @@ void Console::UpdateConfigFilesSubmenu()
 			mii.dwTypeData	= szFilename;
 			mii.cch			= _tcslen(wfd.cFileName);
 		
-			if (_tcsicmp(szFilename, m_strConfigFile.c_str()) == 0) 
+			if (_tcsicmp(szFilename, _settings->configFile().c_str()) == 0) 
 				{
 					mii.fState	= MFS_CHECKED;
 				} 
@@ -1196,7 +1210,7 @@ void Console::UpdateConfigFilesSubmenu()
 void Console::ShowReadmeFile() 
 {
 	// prepare editor parameters
-	tstring strParams(m_strConfigEditorParams);
+	tstring strParams(_settings->configEditorParams());
 	
 	if (strParams.length() == 0) 
 		{
@@ -1220,7 +1234,8 @@ void Console::ShowReadmeFile()
 				}
 		}
 	
-	::ShellExecute(NULL, NULL, m_strConfigEditor.c_str(), strParams.c_str(), NULL, SW_SHOWNORMAL);
+	::ShellExecute(NULL, NULL, 
+								 _settings->configEditor().c_str(), strParams.c_str(), NULL, SW_SHOWNORMAL);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1282,9 +1297,9 @@ DWORD Console::MonitorThread()
 				} 
 			else if (dwWait == WAIT_OBJECT_0 + 2) 
 				{
-					::SetTimer(m_hWnd, TIMER_REPAINT_CHANGE, m_dwChangeRepaintInt, NULL);
+					::SetTimer(m_hWnd, TIMER_REPAINT_CHANGE, _settings->changeRepaintInt(), NULL);
 					// we sleep here for a while, to prevent 'flooding' of m_hStdOut events
-					::Sleep(m_dwChangeRepaintInt);
+					::Sleep(_settings->changeRepaintInt());
 					::ResetEvent(m_hStdOut);
 				}
 		}

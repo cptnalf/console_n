@@ -30,7 +30,7 @@ void Console::OnDestroy()
 			
 			// kill timers
 			::KillTimer(m_hWnd, TIMER_REPAINT_CHANGE);
-			if (m_dwMasterRepaintInt) ::KillTimer(m_hWnd, TIMER_REPAINT_MASTER);
+			if (_settings->masterRepaintInt()) ::KillTimer(m_hWnd, TIMER_REPAINT_MASTER);
 			
 			DestroyCursor();
 			
@@ -72,7 +72,8 @@ void Console::OnDestroy()
 
 /////////////////////////////////////////////////////////////////////////////
 
-void Console::OnNcDestroy() {
+void Console::OnNcDestroy() 
+{
 	if (!m_bInitializing) delete this;
 }
 
@@ -154,7 +155,8 @@ void Console::OnPaintTimer() {
 
 	if (GetChangeRate() > 15) 
 		{
-			::CopyMemory(m_pScreenBuffer, m_pScreenBufferNew, sizeof(CHAR_INFO) * m_dwRows * m_dwColumns);
+			::CopyMemory(m_pScreenBuffer, m_pScreenBufferNew, 
+									 sizeof(CHAR_INFO) * _settings->rows() * _settings->columns());
 			RepaintWindow();
 		} 
 	else
@@ -221,10 +223,10 @@ void Console::OnVScroll(WPARAM wParam)
 			return;
 		}
 	
-	nDelta = max(-nCurrentPos, min(nDelta, (int)(m_dwBufferRows-m_dwRows) - nCurrentPos));
+	nDelta = max(-nCurrentPos, 
+							 min(nDelta, (int)(_settings->bufferRows() - _settings->rows()) - nCurrentPos));
 	if (nDelta)
 		{
-			
 			nCurrentPos += nDelta; 
 			
 			SMALL_RECT sr;
@@ -232,7 +234,7 @@ void Console::OnVScroll(WPARAM wParam)
 			sr.Bottom = (short)nDelta;
 			sr.Left = sr.Right = 0;
 			::SetConsoleWindowInfo(m_hStdOutFresh, FALSE, &sr);
-		
+			
 			SCROLLINFO si;
 			si.cbSize = sizeof(si); 
 			si.fMask  = SIF_POS; 
@@ -240,9 +242,8 @@ void Console::OnVScroll(WPARAM wParam)
 			::FlatSB_SetScrollInfo(m_hWnd, SB_VERT, &si, TRUE);
 		
 			// this seems to work/look much better than direct repainting...
-			::SetTimer(m_hWnd, TIMER_REPAINT_CHANGE, m_dwChangeRepaintInt, NULL);
+			::SetTimer(m_hWnd, TIMER_REPAINT_CHANGE,_settings->changeRepaintInt(), NULL);
 		}
-	
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -269,8 +270,8 @@ void Console::OnLButtonDown(UINT uiFlags, POINTS points)
 	m_mouseCursorOffset.x -= windowRect.left;
 	m_mouseCursorOffset.y -= windowRect.top;
 	
-	if (!m_bMouseDragable ||
-			(m_bInverseShift == !(uiFlags & MK_SHIFT))) 
+	if (!_settings->mouseDragable() ||
+			(_settings->inverseShift() == !(uiFlags & MK_SHIFT))) 
 		{
 			
 			if (m_nCharWidth) 
@@ -294,15 +295,15 @@ void Console::OnLButtonDown(UINT uiFlags, POINTS points)
 					
 					m_nTextSelection = TEXT_SELECTION_SELECTING;
 					
-					m_coordSelOrigin.X = 	min((short)(max(points.x - m_nInsideBorder, 0) / m_nCharWidth), 
-																		(short)(m_dwColumns-1));
-					m_coordSelOrigin.Y = min((short)(max(points.y - m_nInsideBorder, 0) / m_nCharHeight), 
-																	 (short)(m_dwRows-1));
+					m_coordSelOrigin.X = 	min((short)(max(points.x - _settings->insideBorder(), 0) / m_nCharWidth), 
+																		(short)(_settings->columns() - 1));
+					m_coordSelOrigin.Y = min((short)(max(points.y - _settings->insideBorder(), 0) / m_nCharHeight), 
+																	 (short)(_settings->rows() - 1));
 					
 					m_rectSelection.left = m_rectSelection.right = 
-						m_coordSelOrigin.X * m_nCharWidth + m_nInsideBorder;
+						m_coordSelOrigin.X * m_nCharWidth + _settings->insideBorder();
 					m_rectSelection.top = m_rectSelection.bottom = 
-						m_coordSelOrigin.Y * m_nCharHeight + m_nInsideBorder;
+						m_coordSelOrigin.Y * m_nCharHeight + _settings->insideBorder();
 					
 					TRACE(_T("Starting point: %ix%i\n"), m_coordSelOrigin.X, m_coordSelOrigin.Y);
 				}
@@ -314,7 +315,7 @@ void Console::OnLButtonDown(UINT uiFlags, POINTS points)
 				{
 					return;
 				} 
-			else if (m_bMouseDragable) 
+			else if (_settings->mouseDragable()) 
 				{
 					// start to drag window
 					::SetCapture(m_hWnd);
@@ -334,7 +335,7 @@ void Console::OnLButtonUp(UINT uiFlags, POINTS points)
 	
 	if ((m_nTextSelection == TEXT_SELECTION_SELECTED) ||
 			// X Windows select/copy style
-			((m_nTextSelection == TEXT_SELECTION_SELECTING) && (m_bCopyOnSelect))) 
+			((m_nTextSelection == TEXT_SELECTION_SELECTING) && (_settings->copyOnSelect()))) 
 		{
 			
 			// if the user clicked inside the selection rectangle, copy data
@@ -347,7 +348,7 @@ void Console::OnLButtonUp(UINT uiFlags, POINTS points)
 					CopyTextToClipboard();
 				}
 			
-			if (m_bCopyOnSelect) ::ReleaseCapture();
+			if (_settings->copyOnSelect()) ::ReleaseCapture();
 			ClearSelection();
 			
 		}
@@ -368,7 +369,7 @@ void Console::OnLButtonUp(UINT uiFlags, POINTS points)
 			::ReleaseCapture();
 			
 		} 
-	else if (m_bMouseDragable) 
+	else if (_settings->mouseDragable()) 
 		{
 			// end window drag
 			::ReleaseCapture();
@@ -402,7 +403,7 @@ void Console::OnRButtonUp(UINT uiFlags, POINTS points)
 	else 
 		{
 			
-			if (m_bPopupMenuDisabled) return;
+			if (_settings->popupMenuDisabled()) return;
 			
 			POINT	point;
 			point.x = points.x;
@@ -461,7 +462,8 @@ void Console::OnMouseMove(UINT uiFlags, POINTS points)
 					
 					if (m_nTextSelection) 
 						{ 
-							if ((!m_bMouseDragable) || (m_bInverseShift == !(uiFlags & MK_SHIFT))) 
+							if ((!_settings->mouseDragable())
+									|| (_settings->inverseShift() == !(uiFlags & MK_SHIFT))) 
 								{
 									
 									// some text has been selected, just return
@@ -472,33 +474,33 @@ void Console::OnMouseMove(UINT uiFlags, POINTS points)
 									
 									::InvalidateRect(m_hWnd, &m_rectSelection, FALSE);
 									
-									coordSel.X = min((short)(max(points.x - m_nInsideBorder, 0) / m_nCharWidth),
-																	 (short)(m_dwColumns-1));
-									coordSel.Y = min((short)(max(points.y - m_nInsideBorder, 0) / m_nCharHeight),
-																	 (short)(m_dwRows-1));
+									coordSel.X = min((short)(max(points.x - _settings->insideBorder(), 0) / m_nCharWidth),
+																	 (short)(_settings->columns() - 1));
+									coordSel.Y = min((short)(max(points.y - _settings->insideBorder(), 0) / m_nCharHeight),
+																	 (short)(_settings->rows() - 1));
 									
 									TRACE(_T("End point: %ix%i\n"), coordSel.X, coordSel.Y);
 									
 									if (coordSel.X >= m_coordSelOrigin.X) 
 										{
-											m_rectSelection.left = m_coordSelOrigin.X * m_nCharWidth + m_nInsideBorder;
-											m_rectSelection.right = (coordSel.X + 1) * m_nCharWidth + m_nInsideBorder;
+											m_rectSelection.left = m_coordSelOrigin.X * m_nCharWidth + _settings->insideBorder();
+											m_rectSelection.right = (coordSel.X + 1) * m_nCharWidth + _settings->insideBorder();
 										} 
 									else
 										{
-											m_rectSelection.left = coordSel.X * m_nCharWidth + m_nInsideBorder;
-											m_rectSelection.right = (m_coordSelOrigin.X + 1) * m_nCharWidth + m_nInsideBorder;
+											m_rectSelection.left = coordSel.X * m_nCharWidth + _settings->insideBorder();
+											m_rectSelection.right = (m_coordSelOrigin.X + 1) * m_nCharWidth + _settings->insideBorder();
 										}
 									
 									if (coordSel.Y >= m_coordSelOrigin.Y) 
 										{
-											m_rectSelection.top = m_coordSelOrigin.Y * m_nCharHeight + m_nInsideBorder;
-											m_rectSelection.bottom = (coordSel.Y + 1) * m_nCharHeight + m_nInsideBorder;
+											m_rectSelection.top = m_coordSelOrigin.Y * m_nCharHeight + _settings->insideBorder();
+											m_rectSelection.bottom = (coordSel.Y + 1) * m_nCharHeight + _settings->insideBorder();
 										} 
 									else 
 										{
-											m_rectSelection.top = coordSel.Y * m_nCharHeight + m_nInsideBorder;
-											m_rectSelection.bottom = (m_coordSelOrigin.Y + 1) * m_nCharHeight + m_nInsideBorder;
+											m_rectSelection.top = coordSel.Y * m_nCharHeight + _settings->insideBorder();
+											m_rectSelection.bottom = (m_coordSelOrigin.Y + 1) * m_nCharHeight + _settings->insideBorder();
 										}
 									
 									TRACE(_T("Selection rect: %i,%i x %i,%i\n"), 
@@ -509,12 +511,12 @@ void Console::OnMouseMove(UINT uiFlags, POINTS points)
 								}
 							
 						} 
-					else if (m_bMouseDragable) 
+					else if (_settings->mouseDragable()) 
 						{
 							
 							// moving the window
 							HWND hwndZ;
-							switch (m_dwCurrentZOrder)
+							switch (_settings->currentZOrder())
 								{
 								case Z_ORDER_ONTOP		: hwndZ = HWND_TOPMOST; break;
 								case Z_ORDER_ONBOTTOM	: hwndZ = HWND_BOTTOM; break;
@@ -582,7 +584,7 @@ void Console::OnTrayNotify(WPARAM wParam, LPARAM lParam)
 		case WM_RBUTTONUP: 
 			{
 				
-				if (m_bPopupMenuDisabled) return;
+				if (_settings->popupMenuDisabled()) return;
 				
 				POINT	posCursor;
 				
@@ -788,7 +790,7 @@ void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos)
 	
 	if (!(lpWndPos->flags & SWP_NOMOVE)) 
 		{
-			if (m_nSnapDst >= 0) 
+			if (_settings->snapDst() >= 0) 
 				{
 					// we'll snap Console window to the desktop edges
 					RECT rectDesktop;
@@ -807,7 +809,6 @@ void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos)
 										{
 											rectDesktop = monitorInfo.rcWork;
 										}
-									
 								} 
 							else 
 								{
@@ -816,7 +817,6 @@ void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos)
 									rectDesktop.right	= rectDesktop.left + ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
 									rectDesktop.bottom	= rectDesktop.top + ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
 								}
-							
 						} 
 					else
 						{
@@ -866,30 +866,30 @@ void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos)
 								}
 						}
 					
-					m_dwDocked = DOCK_NONE;
+					_settings->setDocked(DOCK_NONE);
 					DWORD	dwLeftRight = 0;
 					DWORD	dwTopBottom = 0;
 					
 					// now, see if we're close to the edges
-					if (lpWndPos->x <= rectDesktop.left + m_nSnapDst) 
+					if (lpWndPos->x <= rectDesktop.left + _settings->snapDst()) 
 						{
 							lpWndPos->x = rectDesktop.left;
 							dwLeftRight = 1;
 						}
 					
-					if (lpWndPos->x >= rectDesktop.right - m_nWindowWidth - m_nSnapDst) 
+					if (lpWndPos->x >= rectDesktop.right - m_nWindowWidth - _settings->snapDst()) 
 						{
 							lpWndPos->x = rectDesktop.right - m_nWindowWidth;
 							dwLeftRight = 2;
 						}
 					
-					if (lpWndPos->y <= rectDesktop.top + m_nSnapDst) 
+					if (lpWndPos->y <= rectDesktop.top + _settings->snapDst()) 
 						{
 							lpWndPos->y = rectDesktop.top;
 							dwTopBottom = 1;
 						}
 					
-					if (lpWndPos->y >= rectDesktop.bottom - m_nWindowHeight - m_nSnapDst) 
+					if (lpWndPos->y >= rectDesktop.bottom - m_nWindowHeight - _settings->snapDst()) 
 						{
 							lpWndPos->y = rectDesktop.bottom - m_nWindowHeight;
 							dwTopBottom = 2;
@@ -902,12 +902,12 @@ void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos)
 							if (dwTopBottom == 1) 
 								{
 									// top left
-									m_dwDocked = DOCK_TOP_LEFT;
+									_settings->setDocked(DOCK_TOP_LEFT);
 								} 
 							else if (dwTopBottom == 2) 
 								{
 									// bottom left
-									m_dwDocked = DOCK_BOTTOM_LEFT;
+									_settings->setDocked(DOCK_BOTTOM_LEFT);
 								}
 						} 
 					else if (dwLeftRight == 2) 
@@ -916,26 +916,26 @@ void Console::OnWindowPosChanging(WINDOWPOS* lpWndPos)
 							if (dwTopBottom == 1) 
 								{
 									// top right
-									m_dwDocked = DOCK_TOP_RIGHT;
+									_settings->setDocked(DOCK_TOP_RIGHT);
 								} 
 							else if (dwTopBottom == 2) 
 								{
 									// bottom right
-									m_dwDocked = DOCK_BOTTOM_RIGHT;
+									_settings->setDocked(DOCK_BOTTOM_RIGHT);
 								}
 						}
 				}
 			
-			m_nX = lpWndPos->x;
-			m_nY = lpWndPos->y;
+			_settings->setX(lpWndPos->x);
+			_settings->setY(lpWndPos->y);
 			
 			//		TRACE(_T("Win pos: %ix%i\n"), m_nX, m_nY);
 			
 			// we need to repaint for relative backgrounds
-			if (m_bRelativeBackground && !m_bInitializing) RepaintWindow();
+			if (_settings->relativeBackground() && !m_bInitializing) RepaintWindow();
 		}
 	
-	if (m_dwCurrentZOrder == Z_ORDER_ONBOTTOM) lpWndPos->hwndInsertAfter = HWND_BOTTOM;
+	if (_settings->currentZOrder() == Z_ORDER_ONBOTTOM) lpWndPos->hwndInsertAfter = HWND_BOTTOM;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -953,15 +953,17 @@ void Console::OnActivateApp(BOOL bActivate, DWORD dwFlags)
 			DrawCursor();
 		}
 	
-	if ((m_dwTransparency == TRANSPARENCY_ALPHA) && (m_byInactiveAlpha > 0)) 
+	if ((_settings->transparency() == TRANSPARENCY_ALPHA) 
+			&& (_settings->inactiveAlpha() > 0)) 
 		{
 			if (bActivate) 
 				{
-					g_pfnSetLayeredWndAttr(m_hWnd, m_crBackground, m_byAlpha, LWA_ALPHA);
+					g_pfnSetLayeredWndAttr(m_hWnd, _settings->background(), _settings->alpha(), LWA_ALPHA);
 				} 
 			else
 				{
-					g_pfnSetLayeredWndAttr(m_hWnd, m_crBackground, m_byInactiveAlpha, LWA_ALPHA);
+					g_pfnSetLayeredWndAttr(m_hWnd, 
+																 _settings->background(), _settings->inactiveAlpha(), LWA_ALPHA);
 				}
 			
 		}
@@ -1026,7 +1028,7 @@ void Console::OnWallpaperChanged(const TCHAR* pszFilename)
 {
 	UNREFERENCED_PARAMETER(pszFilename);
 	
-	if (m_dwTransparency == TRANSPARENCY_FAKE) 
+	if (_settings->transparency() == TRANSPARENCY_FAKE) 
 		{
 		SetWindowTransparency();
 		CreateBackgroundBitmap();
@@ -1047,7 +1049,7 @@ void Console::OnSetCursor(WORD wHitTest, WORD wMouseMessage)
 		{
 			if (wMouseMessage == WM_LBUTTONDOWN) 
 				{
-					if (m_bMouseDragable) 
+					if (_settings->mouseDragable()) 
 						{
 							// start to drag window
 							RECT windowRect;
@@ -1060,13 +1062,50 @@ void Console::OnSetCursor(WORD wHitTest, WORD wMouseMessage)
 				} 
 			else if (wMouseMessage == WM_LBUTTONUP) 
 				{
-					if (m_bMouseDragable) 
+					if (_settings->mouseDragable()) 
 						{
 							// end window drag
 							::ReleaseCapture();
 						}
 				}
 		}
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+
+void Console::EditConfigFile() 
+{
+	// prepare editor parameters
+	tstring strParams(_settings->configEditorParams());
+	
+	if (strParams.empty()) 
+		{
+			// no params, just use the config file
+			strParams = _settings->configFile();
+		} 
+	else
+		{
+			size_t nPos = strParams.find(_T("%f"));
+			
+			if (nPos == tstring::npos) 
+				{
+					// no '%f' in editor params, concatenate config file name
+					strParams += _T(" ");
+					strParams += _settings->configFile();
+				} 
+			else
+				{
+					// replace '%f' with config file name
+					strParams = strParams.replace(nPos, 2, _settings->configFile());
+				}
+		}
+	
+	// start editor
+	::ShellExecute(NULL, NULL, _settings->configEditor().c_str(), 
+								 strParams.c_str(), NULL, SW_SHOWNORMAL);
 }
 
 /////////////////////////////////////////////////////////////////////////////

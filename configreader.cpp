@@ -104,10 +104,40 @@ namespace
 	}
 };
 
-
-BOOL Console::GetOptions()
+ConfigSettings::ConfigSettings()
 {
-	BOOL bRet = FALSE;
+	_setDefaults();
+}
+
+bool ConfigSettings::load()
+{
+	bool bRet = false;
+
+	/* sanity check. */
+	if (m_strConfigFile.empty()) return false;
+
+	COLORREF defColors[] =
+		{
+			0x000000,
+			0x800000,
+			0x008000,
+			0x808000,
+			0x000080,
+			0x800080,
+			0x008080,
+			0xC0C0C0,
+			0x808080,
+			0xFF0000,
+			0x00FF00,
+			0xFFFF00,
+			0x0000FF,
+			0xFF00FF,
+			0x00FFFF,
+			0xFFFFFF,
+		};
+	
+	memcpy(m_arrConsoleColors, defColors, sizeof(defColors));
+	
 	
 	IStream*				pFileStream			= NULL;
 	IXMLDocument*			pConfigDoc			= NULL;
@@ -172,7 +202,7 @@ BOOL Console::GetOptions()
 		if (!(bstr == CComBSTR(_T("CONSOLE")))) throw XmlException(FALSE);
 		
 		GetAttribute(pRootElement, _T("title"), m_strWindowTitle);
-		m_strWindowTitleCurrent = m_strWindowTitle;
+		//m_strWindowTitleCurrent = m_strWindowTitle;
 		
 		GetAttribute(pRootElement, _T("refresh"), m_dwMasterRepaintInt);
 		
@@ -290,7 +320,7 @@ BOOL Console::GetOptions()
 														GetAttribute(pColorSubelement, _T("g"), g);
 														GetAttribute(pColorSubelement, _T("b"), b);
 														
-														Console::m_arrConsoleColors[i] = RGB(r, g, b);
+														m_arrConsoleColors[i] = RGB(r, g, b);
 													}
 												
 												SAFERELEASE(pColorSubelement);
@@ -929,11 +959,11 @@ BOOL Console::GetOptions()
 	} 
 	catch (const XmlException& e) 
 		{
-			bRet = e.m_bRet;
+			bRet = e.m_bRet == TRUE;
 		}
 	catch (XmlException* e)
 		{
-			bRet = e->m_bRet;
+			bRet = e->m_bRet == TRUE;
 			delete e;
 		}
 	
@@ -954,84 +984,34 @@ BOOL Console::GetOptions()
 	return bRet;
 }
 
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::EditConfigFile() 
-{
-	// prepare editor parameters
-	tstring strParams(m_strConfigEditorParams);
-	
-	if (strParams.empty()) 
-		{
-			// no params, just use the config file
-			strParams = m_strConfigFile;
-		} 
-	else
-		{
-			size_t nPos = strParams.find(_T("%f"));
-			
-			if (nPos == tstring::npos) 
-				{
-					// no '%f' in editor params, concatenate config file name
-					strParams += _T(" ");
-					strParams += m_strConfigFile;
-				} 
-			else
-				{
-					// replace '%f' with config file name
-					strParams = strParams.replace(nPos, 2, m_strConfigFile);
-				}
-		}
-	
-	// start editor
-	::ShellExecute(NULL, NULL, m_strConfigEditor.c_str(), strParams.c_str(), NULL, SW_SHOWNORMAL);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-void Console::_setDefaults()
+void ConfigSettings::_setDefaults()
 {
 	// set default values
 	m_strShell				= _T("");
 	m_strConfigEditor		= _T("notepad.exe");
 	m_strConfigEditorParams	= _T("");
-	m_dwReloadNewConfig		= m_dwReloadNewConfigDefault;
-	m_hwndInvisParent		= NULL;
+	m_dwReloadNewConfig		= RELOAD_NEW_CONFIG_PROMPT;
 	m_dwMasterRepaintInt	= 500;
 	m_dwChangeRepaintInt	= 50;
 	m_strIconFilename		= _T("");
-	m_hSmallIcon			= NULL;
-	m_hBigIcon				= NULL;
-	m_hPopupMenu			= NULL;
-	m_hConfigFilesMenu		= NULL;
 	m_bPopupMenuDisabled	= FALSE;
-	m_strWindowTitle		= m_strWindowTitleDefault;
-	m_strWindowTitleCurrent	= m_strWindowTitleDefault;
+	m_strWindowTitle		= _T("Console");
 	m_strFontName			= _T("Lucida Console");
 	m_dwFontSize			= 8;
 	m_bBold					= FALSE;
 	m_bItalic				= FALSE;
 	m_bUseFontColor			= FALSE;
 	m_crFontColor			= RGB(0, 0, 0);
-//	m_nX					= 0;
-//	m_nY					= 0;
-	m_nWindowWidth			= 0;
-	m_nWindowHeight			= 0;
-	m_nXBorderSize			= 0;
-	m_nYBorderSize			= 0;
-	m_nCaptionSize			= 0;
-	m_nClientWidth			= 0;
-	m_nClientHeight			= 0;
-	m_nCharHeight			= 0;
-	m_nCharWidth			= 0;
+	m_nX					= 0;
+	m_nY					= 0;
+
 	m_dwWindowBorder		= BORDER_NONE;
-	m_bShowScrollbar		= FALSE;
 	m_nScrollbarStyle		= FSB_REGULAR_MODE;
 	m_crScrollbarColor		= ::GetSysColor(COLOR_3DHILIGHT);
 	m_nScrollbarWidth		= ::GetSystemMetrics(SM_CXVSCROLL);
 	m_nScrollbarButtonHeight= ::GetSystemMetrics(SM_CYVSCROLL);
 	m_nScrollbarThunmbHeight= ::GetSystemMetrics(SM_CYVTHUMB);
+
 	m_dwTaskbarButton		= TASKBAR_BUTTON_NORMAL;
 	m_bMouseDragable		= TRUE;
 	m_nSnapDst				= 10;
@@ -1043,17 +1023,19 @@ void Console::_setDefaults()
 	m_byInactiveAlpha		= 150;
 	m_bBkColorSet			= FALSE;
 	m_crBackground			= RGB(0, 0, 0);
+
 	m_bTintSet				= FALSE;
 	m_byTintOpacity			= 50;
 	m_byTintR				= 0;
 	m_byTintG				= 0;
 	m_byTintB				= 0;
+
 	m_bBitmapBackground		= FALSE;
 	m_strBackgroundFile		= _T("");
 	m_dwBackgroundStyle		= BACKGROUND_STYLE_RESIZE;
 	m_bRelativeBackground	= FALSE;
 	m_bExtendBackground		= FALSE;
-	m_bHideWindow			= FALSE;
+
 	m_bHideConsole			= TRUE;
 	m_dwCursorStyle			= CURSOR_STYLE_CONSOLE;
 	m_bStartMinimized		= FALSE;
@@ -1071,12 +1053,13 @@ void Console::_setDefaults()
 void Console::ReloadSettings() 
 {
 	m_bInitializing = TRUE;
-	m_bReloading	= TRUE;
-
+	
+	_settings->setReloading(true);
+	
 	// suspend console monitor thread
 	::SuspendThread(m_hMonitorThread);
 	::KillTimer(m_hWnd, TIMER_REPAINT_CHANGE);
-	if (m_dwMasterRepaintInt) ::KillTimer(m_hWnd, TIMER_REPAINT_MASTER);
+	if (_settings->masterRepaintInt()) ::KillTimer(m_hWnd, TIMER_REPAINT_MASTER);
 
 	// hide Windows console
 	::ShowWindow(m_hWndConsole, SW_HIDE);
@@ -1094,17 +1077,16 @@ void Console::ReloadSettings()
 	::DestroyMenu(m_hPopupMenu);
 	
 	// uninitialize flat scrollbars
-	if (m_nScrollbarStyle != FSB_REGULAR_MODE) ::UninitializeFlatSB(m_hWnd);
+	if (_settings->scrollbarStyle() != FSB_REGULAR_MODE) ::UninitializeFlatSB(m_hWnd);
 
 	// destory window
 	::DestroyWindow(m_hWnd);
 	if (m_hwndInvisParent) ::DestroyWindow(m_hwndInvisParent);
 	
-	_setDefaults();
-	
-	SetDefaultConsoleColors();
+	//SetDefaultConsoleColors();
 
-	GetOptions();
+	_settings->load();
+	m_strWindowTitleCurrent = _settings->windowTitle();
 
 	CreateConsoleWindow();
 
@@ -1119,31 +1101,36 @@ void Console::ReloadSettings()
 	CreateCursor();
 
 	RefreshStdOut();
-	InitConsoleWndSize(m_dwColumns);
+	InitConsoleWndSize(_settings->columns());
 	ResizeConsoleWindow();
 	ShowHideConsole();
 	
 	m_bInitializing = FALSE;
-	m_bReloading	= FALSE;
-
+	
+	_settings->setReloading(false);
+	
 	RefreshScreenBuffer();
-	::CopyMemory(m_pScreenBuffer, m_pScreenBufferNew, sizeof(CHAR_INFO) * m_dwRows * m_dwColumns);
+	::CopyMemory(m_pScreenBuffer, m_pScreenBufferNew, 
+							 sizeof(CHAR_INFO) * _settings->rows() * _settings->columns());
 	RepaintWindow();
 
-	if (m_dwMasterRepaintInt) ::SetTimer(m_hWnd, TIMER_REPAINT_MASTER, m_dwMasterRepaintInt, NULL);
+	if (_settings->masterRepaintInt())
+		{
+			::SetTimer(m_hWnd, TIMER_REPAINT_MASTER, _settings->masterRepaintInt(), NULL);
+		}
 	
 	::ResumeThread(m_hMonitorThread);
 
-	if (m_bStartMinimized) 
+	if (_settings->startMinimized())
 		{
-		if (m_dwTaskbarButton > TASKBAR_BUTTON_NORMAL) 
-			{
-				m_bHideWindow = TRUE;
-			} 
-		else 
-			{
-				::ShowWindow(m_hWnd, SW_MINIMIZE);
-			}
+			if (_settings->taskbarButton() > TASKBAR_BUTTON_NORMAL) 
+				{
+					m_bHideWindow = TRUE;
+				} 
+			else 
+				{
+					::ShowWindow(m_hWnd, SW_MINIMIZE);
+				}
 		} 
 	else
 		{

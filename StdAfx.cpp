@@ -53,7 +53,8 @@ OSVERSIONINFO	g_osInfo;
 /////////////////////////////////////////////////////////////////////////////
 // Win2k library stuff
 HMODULE						g_hUser32				= NULL;
-HMODULE						g_hMsimg32				= NULL;
+HMODULE						g_hMsimg32			= NULL;
+HMODULE           g_hShell32      = NULL;
 SETLAYEREDWINDOWATTRIBUTES	g_pfnSetLayeredWndAttr	= NULL;
 ALPHABLEND					g_pfnAlphaBlend			= NULL;
 

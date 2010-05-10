@@ -352,6 +352,7 @@ public: // public data
 
 private: // private data
 	void _resetVars();
+	inline void _repaintBG(RECT* rect);
 	
 	ConfigSettings* _settings;
 	
@@ -402,8 +403,6 @@ private: // private data
 	HMENU	m_hConfigFilesMenu;
 		
 	// Console window title variables
-	// holds the default console title ("console" or the one passed in the cmdline param)
-	tstring m_strWindowTitleDefault;
 	// holds the current window title
 	tstring m_strWindowTitleCurrent;
 		

@@ -20,7 +20,13 @@ void Console::SendTextToConsole(LPCTSTR pszText)
 {
 	if (!pszText || (_tcslen(pszText) == 0)) return;
 	
-	HANDLE hStdIn = ::CreateFile(_T("CONIN$"), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
+	HANDLE hStdIn = ::CreateFile(
+															 _T("CONIN$"), 
+															 GENERIC_WRITE | GENERIC_READ, 
+															 FILE_SHARE_READ | FILE_SHARE_WRITE, 
+															 NULL, 
+															 OPEN_EXISTING, 
+															 0, 0);
 	
 	size_t dwTextLen = _tcslen(pszText);
 	DWORD	dwTextWritten	= 0;
@@ -42,7 +48,6 @@ void Console::SendTextToConsole(LPCTSTR pszText)
 	
 	DEL_ARR(pKeyEvents);
 	::CloseHandle(hStdIn);
-	
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -53,7 +58,6 @@ void Console::SendTextToConsole(LPCTSTR pszText)
 void Console::PasteClipoardText() 
 {
 	if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) return;
-	
 	
 	if (::OpenClipboard(m_hWnd)) 
 		{
@@ -93,7 +97,8 @@ void Console::CopyTextToClipboard()
 	
 	::EmptyClipboard();
 	
-	HGLOBAL hglbData = ::GlobalAlloc(GMEM_MOVEABLE, (nSelColumns+2)*nSelRows*sizeof(TCHAR)); 
+	HGLOBAL hglbData = ::GlobalAlloc(GMEM_MOVEABLE, 
+																	 (nSelColumns + 2) * nSelRows * sizeof(TCHAR)); 
 	if (hglbData == NULL)
 		{ 
 			::CloseClipboard();
@@ -108,14 +113,16 @@ void Console::CopyTextToClipboard()
 		{
 			for (int j = 0; j < nSelColumns; ++j)
 				{
-					pszData[i*(nSelColumns+2) + j] = 
-						m_pScreenBuffer[(nSelY+i)*_settings->columns() + nSelX + j].Char.UnicodeChar;
+					pszData[i* (nSelColumns + 2) + j] = 
+						m_pScreenBuffer[(nSelY + i) * _settings->columns() + nSelX + j].Char.UnicodeChar;
 				}
+			
 			// at the end of each row we put \r\n (except for the last one where we put \0)
-			pszData[i*(nSelColumns+2) + nSelColumns] = _TCHAR('\r');
-			pszData[i*(nSelColumns+2) + nSelColumns + 1] = _TCHAR('\n');
+			pszData[i * (nSelColumns + 2) + nSelColumns] = _TCHAR('\r');
+			pszData[i * (nSelColumns + 2) + nSelColumns + 1] = _TCHAR('\n');
 		}
-	pszData[(i-1)*(nSelColumns+2) + nSelColumns] = _TCHAR('\x0');
+	
+	pszData[(i - 1) * (nSelColumns + 2) + nSelColumns] = _TCHAR('\x0');
 	
 	::GlobalUnlock(hglbData);
 	
@@ -123,6 +130,7 @@ void Console::CopyTextToClipboard()
 		{
 			// we need to global-free data only if copying failed
 		}
+	
 	::CloseClipboard();
 	// !!! No call to GlobalFree here. Next app that uses clipboard will call EmptyClipboard to free the data
 	
@@ -151,29 +159,28 @@ void Console::ClearSelection()
 
 inline void Console::GetCursorRect(RECT& rectCursor) 
 {
-	
 	::ZeroMemory(&rectCursor, sizeof(RECT));
 	
 	if (m_nCharWidth > 0) 
 		{
 			// fixed pitch
 			
-			rectCursor.left = m_csbiCursor.dwCursorPosition.X * m_nCharWidth + _settings->insideBorder();
-			rectCursor.top = m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + _settings->insideBorder();
+			rectCursor.left = 
+				m_csbiCursor.dwCursorPosition.X * m_nCharWidth + _settings->insideBorder();
+			rectCursor.top = 
+				m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + _settings->insideBorder();
 			rectCursor.right = 
 				m_csbiCursor.dwCursorPosition.X * m_nCharWidth + m_nCharWidth + _settings->insideBorder();
 			rectCursor.bottom = 
 				m_csbiCursor.dwCursorPosition.Y * m_nCharHeight + m_nCharHeight + _settings->insideBorder();
-			
 		} 
 	else
 		{
-			
 			// variable pitch, we do a little joggling here :-)
 			RECT			rectLine;
 			int				nLastCharWidth;
 			auto_ptr<TCHAR>	pszLine(new TCHAR[m_csbiCursor.dwCursorPosition.X + 2]);
-			::ZeroMemory(pszLine.get(), (m_csbiCursor.dwCursorPosition.X + 2)*sizeof(TCHAR));
+			::ZeroMemory(pszLine.get(), (m_csbiCursor.dwCursorPosition.X + 2) * sizeof(TCHAR));
 			
 			for (short i = 0; i <= m_csbiCursor.dwCursorPosition.X; ++i) 
 				{ 
@@ -214,7 +221,6 @@ inline void Console::GetCursorRect(RECT& rectCursor)
 
 void Console::InitConsoleWndSize(DWORD dwColumns) 
 {
-	
 	if (m_nTextSelection) ClearSelection();
 	
 	COORD coordConsoleSize;
@@ -229,7 +235,7 @@ void Console::InitConsoleWndSize(DWORD dwColumns)
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	::GetConsoleScreenBufferInfo(m_hStdOutFresh, &csbi);
 	
-	if ((DWORD) csbi.dwSize.X * csbi.dwSize.Y > (DWORD) dwColumns * _settings->bufferRows()) 
+	if (((DWORD)csbi.dwSize.X * csbi.dwSize.Y) > ((DWORD)dwColumns * _settings->bufferRows())) 
 		{
 			::SetConsoleWindowInfo(m_hStdOutFresh, TRUE, &srConsoleRect);
 			::SetConsoleScreenBufferSize(m_hStdOutFresh, coordConsoleSize);
@@ -252,8 +258,11 @@ void Console::RefreshStdOut()
 {
 	if (m_hStdOutFresh) ::CloseHandle(m_hStdOutFresh);
 	m_hStdOutFresh = ::CreateFile(_T("CONOUT$"), 
-																GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 
-																NULL, OPEN_EXISTING, 0, 0);
+																GENERIC_WRITE | GENERIC_READ, 
+																FILE_SHARE_READ | FILE_SHARE_WRITE, 
+																NULL, 
+																OPEN_EXISTING, 
+																0, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -267,18 +276,18 @@ void Console::RefreshScreenBuffer()
 	if (m_bInitializing) return;
 	
 	::GetConsoleScreenBufferInfo(m_hStdOutFresh, &m_csbiConsole);
-
+	
 	SCROLLINFO si;
 	si.cbSize = sizeof(si); 
 	si.fMask  = SIF_POS; 
 	si.nPos   = (int)m_csbiConsole.srWindow.Top;
 	::FlatSB_SetScrollInfo(m_hWnd, SB_VERT, &si, TRUE);
 	
-	if ((m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1 != _settings->columns()) 
-			|| (m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1 != _settings->rows()) 
+	if (((m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1) != _settings->columns()) 
+			|| ((m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1) != _settings->rows()) 
 			|| (m_csbiConsole.dwSize.Y != _settings->bufferRows())) 
 		{
-			_settings->setColumns(m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left + 1);
+			_settings->setColumns(m_csbiConsole.srWindow.Right - m_csbiConsole.srWindow.Left+ 1);
 			_settings->setRows(m_csbiConsole.srWindow.Bottom - m_csbiConsole.srWindow.Top + 1);
 			ResizeConsoleWindow();
 		}
@@ -301,12 +310,16 @@ void Console::RefreshScreenBuffer()
 	DEL_ARR(m_pScreenBufferNew);
 	m_pScreenBufferNew = new CHAR_INFO[_settings->rows() * _settings->columns()];
 	
-	::ReadConsoleOutput(m_hStdOutFresh, m_pScreenBufferNew, coordBufferSize, coordStart, &srRegion);
+	::ReadConsoleOutput(m_hStdOutFresh, 
+											m_pScreenBufferNew, 
+											coordBufferSize, 
+											coordStart, 
+											&srRegion);
 	
 	// set console window title
 	TCHAR szWinConsoleTitle[MAX_PATH+1];
 	::GetConsoleTitle(szWinConsoleTitle, MAX_PATH);
-
+	
 	tstring strWinConsoleTitle(szWinConsoleTitle);
 	tstring strConsoleTitle(_T(""));
 
@@ -320,7 +333,7 @@ void Console::RefreshScreenBuffer()
 			//    windows titles differ, and if they do, update it.
 			if ((_settings->windowTitle().empty())  &&
 					(strWinConsoleTitle[m_strWinConsoleTitle.length()] == ' ') &&
-			(strWinConsoleTitle[m_strWinConsoleTitle.length()+1] == '-')) 
+					(strWinConsoleTitle[m_strWinConsoleTitle.length()+1] == '-')) 
 				{
 					strConsoleTitle = strWinConsoleTitle.substr(m_strWinConsoleTitle.length()+3);
 				} 
@@ -329,7 +342,6 @@ void Console::RefreshScreenBuffer()
 					strConsoleTitle = 
 						_settings->windowTitle() + strWinConsoleTitle.substr(m_strWinConsoleTitle.length());
 				}
-			
 		} 
 	else 
 		{
@@ -360,7 +372,6 @@ void Console::RefreshScreenBuffer()
 
 void Console::SetScrollbarStuff()
 {
-	
 	if (_settings->useTextBuffer())
 		{
 			m_bShowScrollbar = _settings->bufferRows() > _settings->rows();
@@ -371,7 +382,7 @@ void Console::SetScrollbarStuff()
 		}
 	
 	// we don't call InitializeFlatSB due to some problems on Win2k, Windowblinds and new-style scrollbars
-	if (_settings->scrollbarStyle() != FSB_REGULAR_MODE) ::InitializeFlatSB(m_hWnd);
+	if (_settings->scrollbarStyle() != FSB_REGULAR_MODE) { ::InitializeFlatSB(m_hWnd); }
 	::FlatSB_ShowScrollBar(m_hWnd, SB_VERT, m_bShowScrollbar);
 	::FlatSB_SetScrollRange(m_hWnd, SB_VERT, 0, _settings->bufferRows() - _settings->rows(), FALSE);
 	

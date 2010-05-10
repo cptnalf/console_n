@@ -986,8 +986,19 @@ bool ConfigSettings::load()
 
 void ConfigSettings::_setDefaults()
 {
-	// set default values
-	m_strShell				= _T("");
+ 	// set default values
+	
+	/* set the shell to comspec or cmd.exe
+	 * depending on what we find.
+	 */
+	m_strShell.clear();
+	{
+		TCHAR	szComspec[MAX_PATH];
+		if (::GetEnvironmentVariable(_T("COMSPEC"), szComspec, MAX_PATH) > 0) 
+			{ m_strShell = szComspec; }
+		else { m_strShell = _T("cmd.exe"); }
+	}
+	
 	m_strConfigEditor		= _T("notepad.exe");
 	m_strConfigEditorParams	= _T("");
 	m_dwReloadNewConfig		= RELOAD_NEW_CONFIG_PROMPT;
@@ -995,7 +1006,7 @@ void ConfigSettings::_setDefaults()
 	m_dwChangeRepaintInt	= 50;
 	m_strIconFilename		= _T("");
 	m_bPopupMenuDisabled	= FALSE;
-	m_strWindowTitle		= _T("Console");
+	m_strWindowTitle		= _T("console");
 	m_strFontName			= _T("Lucida Console");
 	m_dwFontSize			= 8;
 	m_bBold					= FALSE;

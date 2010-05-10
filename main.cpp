@@ -39,6 +39,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+extern void VisitConfigFile(const wchar_t*);
 
 /////////////////////////////////////////////////////////////////////////////
 // Used for parsing cmd line
@@ -182,19 +183,22 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 					 * title: Application User Model IDs (AppUserModelIDs)
 					 * 
 					 */
+					typedef HRESULT (__stdcall * SetCurProcAppUserModelIDFx_T )(__in const wchar_t*);
 					
-					typedef HRESULT (*SetCurProcAppUserModelIDFx_T)(const wchar_t* appID);
-					
+					g_hShell32 = LoadLibrary(_T("shell32.dll"));
 					SetCurProcAppUserModelIDFx_T procSetModelID = NULL;
 					
-					HMODULE sh32 = GetModuleHandle(_T("shell32.dll"));
-					
-					if (sh32)
+					if (g_hShell32)
 						{
-							procSetModelID = (SetCurProcAppUserModelIDFx_T)
-								GetProcAddress(sh32, "SetCurrentProcessExplicitAppUserModelID");
+							procSetModelID = 
+							  (SetCurProcAppUserModelIDFx_T)GetProcAddress(g_hShell32, "SetCurrentProcessExplicitAppUserModelID");
 							
-							if (procSetModelID) { procSetModelID(L"Ingenuity_Unlimited_Ltd.Console"); }
+							if (procSetModelID)
+								{
+									const wchar_t* appID = L"Ingenuity_Unlimited_Ltd.Console";
+									HRESULT hr = procSetModelID(appID); 
+									TRACE(hr == S_OK ? L"woo!" : L"flarg!");
+								}
 						}
 				}
 			
@@ -210,6 +214,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			return 0;	
 		}
 	
+	VisitConfigFile(szConfigFile);
+	
 	// pump messages (no TranslateMessage here, we do that in WinProc)
 	MSG	msg;
 	while (::GetMessage(&msg, NULL, 0, 0)) ::DispatchMessage(&msg);
@@ -218,6 +224,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		{
 			::FreeLibrary(g_hUser32);
 			::FreeLibrary(g_hMsimg32);
+			
+			if (g_hShell32) { FreeLibrary(g_hShell32); }
 		}
 	
 	return msg.wParam;

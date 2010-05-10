@@ -625,6 +625,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\recentitems.cpp"
+				>
+			</File>
+			<File
 				RelativePath="StdAfx.cpp"
 				>
 				<FileConfiguration
@@ -687,6 +691,10 @@
 			</File>
 			<File
 				RelativePath="Cursors.h"
+				>
+			</File>
+			<File
+				RelativePath=".\defines.h"
 				>
 			</File>
 			<File

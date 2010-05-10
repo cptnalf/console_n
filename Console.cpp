@@ -144,7 +144,7 @@ Console::Console(LPCTSTR pszConfigFile, LPCTSTR pszShellCmdLine, LPCTSTR pszCons
 	// if no config file is given, get console.xml from the startup directory
 	if (_settings->configFile().empty()) 
 		{
-			_settings->setConfigFile(strExeDir + tstring(_T("console.xml")));
+			_settings->setConfigFile(strExeDir + tstring(_T("console.console")));
 		}
 	
 	// get readme filename
@@ -1147,7 +1147,7 @@ void Console::UpdateConfigFilesSubmenu()
 	// create the search mask...
 	int		nBackslashPos = _settings->configFile().rfind(_TCHAR('\\'));
 	tstring	strConfigFileDir(_settings->configFile().substr(0, nBackslashPos+1));
-	tstring	strSearchFileMask(strConfigFileDir + tstring(_T("*.xml")));
+	tstring	strSearchFileMask(strConfigFileDir + tstring(_T("*.console")));
 	
 	// ... and enumearate files
 	hWfd = ::FindFirstFile(strSearchFileMask.c_str(), &wfd);

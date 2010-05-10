@@ -143,6 +143,7 @@ typedef BOOL (WINAPI* SETLAYEREDWINDOWATTRIBUTES)(HWND hwnd, COLORREF crKey, BYT
 
 extern HMODULE						g_hUser32;
 extern HMODULE						g_hMsimg32;
+extern HMODULE            g_hShell32;
 extern SETLAYEREDWINDOWATTRIBUTES	g_pfnSetLayeredWndAttr;
 extern ALPHABLEND					g_pfnAlphaBlend;
 // these can be found in multimon.h
